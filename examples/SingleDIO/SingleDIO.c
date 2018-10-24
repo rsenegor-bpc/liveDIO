@@ -308,5 +308,6 @@ while(j<4 && initFlag) {      //Limit how many values of j (device number) we te
      
    system("clear");
  }
+   system("clear");
    return 0;
 }
