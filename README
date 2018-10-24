@@ -1,0 +1,150 @@
+BEFORE YOU BEGIN:
+
+PowerDAQ for Linux Driver release 3.6 is supplied AS IS.
+If you find a bug or want to suggest improvements e-mail: 
+support@powerdaq.com
+
+The driver was  tested using Mandrake 9.1, Mandrake 10.0,
+Mandrake 10.0 for AMD64, RedHat 8.0, RedHat 9.0, Fedora Core 1,
+Core 2, Core3 and Core 4.
+Minimum hardware requirements: Pentium-500 processor, 64MB of RAM.
+
+This driver can be used with the following real-time extensions:
+- RTLinuxPro 2.x (purchased through www.fsmlabs.com)
+- RTLinux GPL 3.x (www.rtlinux-gpl.org)
+- RTAI 3.x (www.rtai.org)
+- Xenomai 2.x (www.xenomai.org)
+
+The PowerDAQ Linux driver API is mostly compatible with the
+Win32 PowerDAQ API. See DIFFERENCES below for more details.
+
+The following PCI/PXI boards are supported:
+PowerDAQ MF
+PowerDAQ II MF
+PowerDAQ II MFS
+PowerDAQ II AO
+PowerDAQ II DIO
+PowerDAQ Lab boards
+
+
+DRIVER STRUCTURE
+
+Files in tarball:
+
+
+./: makefile and the driver source code that needs to be recompiled
+
+./doc: PowerDAQ API function reference manual
+
+./pdfw_lib/: PowerDAQ firmware interface library. Compiled without
+    version information
+    
+./lib/: PowerDAQ API shared library, you need to link this library to your project
+
+./include/: PowerDAQ API header files
+./include/pd_boards.h   - PowerDAQ boards ID and market names. Driver
+    include file only.
+./include/pdcmd.h       - PowerDAQ Linux ioctl() casting definitions.
+    Included into driver and application library.
+./include/pdfw_def.h    - Definitions for PowerDAQ firmware commands.
+    Included everywhere.
+./include/pdl_if.h      - PowerDAQ Linux driver firmware interface
+    definition. Included into driver only
+./include/powerdaq-internal.h - PowerDAQ definitions file. Used inside
+    the driver only.
+./include/powerdaq-extension.h - PowerDAQ extension file. Used inside
+    the driver only.
+./include/powerdaq.h    - PowerDAQ definitions. Have to be included
+    into driver, library and applications.
+./include/powerdaq32.h  - PowerDAQ API definitions. These functions
+    object code is in ./lib/powerdaq32.o
+./include/win_ddk_types.h   - defines Win32 DDK types thru the Linux
+    kernel types
+./include/win_sdk_types.h   - defines Win32 SDK types thru the Linux
+    data types. Useful when you port applications from the Windows to
+    Linux.
+./include/pd_hcaps.h    - boards parameters definition. To be included into
+    application. 
+        
+./labVIEW  LabVIEW library, it contains the VIs and the shared library for LabVIEW. 
+    
+./examples
+./examples/SingleAI - Simple slow speed analog input example (MFx boards only)
+./examples/SingleAO - Simple slow speed analog output example (MFx and AO boards only)
+./examples/SingleDI - Simple slow speed digital input example (MFx boards only)
+./examples/SingleDO - Simple slow speed digital output example (MFx boards only)
+./examples/SingleDIO - Simple slow speed digital input/output example (DIO boards only)
+./examples/BufferedAI - asynchronous Analog Input example for fast acquisition (MFx boards only)
+./examples/BufferedAO - buffered analog output example (MFx and AO boards only)
+./examples/BufferedDI - buffered digital input example (DIO boards only)
+./examples/BufferedDO - buffered digital output example (DIO boards only)
+
+./PrintH  - Hercules Graphics Card driver. HGC should be installed as a secondary
+    monitor in your system. It exports the set of functions to print debug
+    messages on HGC monitor instead of kern.log file. It is very useful to
+    see dynamic picture of the driver internals or post-mortal screenshot.
+    Additional functions can set up viewport for hercmon_printf() output.
+
+
+COMPILATION
+
+The driver comes in two parts: the firmware function library (pdfw_lib.o) and the 
+driver itself (powerdaq.c). The library doesn't contain any
+kernel-specific calls and therefore is kernel independent. 
+All interfaces between the kernel and user space are incorporated into powerdaq.c.
+
+Please make sure that you have the kernel header or source files installed before trying 
+to compile the PowerDAQ driver.
+
+
+PROGRAMMING THE POWERDAQ BOARDS
+
+As a primary source to introduce yourself into the PowerDAQ programming we
+recommend you to read:
+1. PowerDAQ Programming Guide (see powerdaq32.txt)
+2. PowerDAQ PD2-MF(S) User Manual
+3. PowerDAQ PD2-AO User Manual
+4. PowerDAQ PD2-DIO User Manual
+They are available for download at: http://www.powerdaq.com
+
+The best way to start is to take one of the examples Makefile as a template.
+You need to include the following header files in your source code:
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include "win_sdk_types.h"
+#include "powerdaq.h"
+#include "powerdaq32.h"
+
+you also need to link your application with the PowerDAQ shared library by 
+adding "-lpowerdaq32" to your linker options.
+
+
+
+
+DIFFERENCES BETWEEN POWERDAQ LINUX API AND WIN32 API
+PowerDAQ Linux API as close as possible to PowerDAQ Win32 API however there
+are some differences.
+
+1. Functions return error codes (defined in errno.h) instead of Boolean
+value
+
+2. There are no _PdOpenDriver(), _PdOpenAdapter() functions and their mates
+_PdCloseDriver and _PdCloseAdapter. Instead of them _PdAcquireSubsystem()
+takes responsibility of those functions.
+Use handle = _PdAcquireSubsystem(board_id, subsystem, 1) to get system in use 
+and _PdAcquireSubsystem(handle, subsystem, 0) to release it.
+
+3. Linux doesn't provide one-to-one equivalent of Win32 API
+WaitForSingleObject() function. SIGIO signal is used instead of Win32
+events.
+Instead of _PdSetPrivateEvent(), _PdxxxSetPrivateEvent(),
+_PdxxxClearPrivateEvent()
+and _PdClearPrivateEvent() function _PdSetAsyncNotify() is introduced.
+Asynchronous notification is automatically cleared when application releases
+subsystem.
+
+
+

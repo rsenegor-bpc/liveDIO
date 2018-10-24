@@ -1,0 +1,261 @@
+#
+# Abstract:
+#	Real-Time Workshop template makefile for building a UNIX-based
+#	stand-alone generic real-time version of Simulink model using
+#	generated C code.
+#
+# 	This makefile attempts to conform to the guidelines specified in the
+# 	IEEE Std 1003.2-1992 (POSIX) standard. It is designed to be used
+#       with GNU Make which is located in matlabroot/rtw/bin.
+#
+# 	Note that this template is automatically customized by the Real-Time
+#	Workshop build procedure to create "<model>.mk"
+#
+#       The following defines can be used to modify the behavior of the
+#	build:
+#	  OPT_OPTS       - Optimization options. Default is -O. To enable 
+#                          debugging specify as OPT_OPTS=-g. 
+#                          Because of optimization problems in IBM_RS, 
+#                          default is no-optimization. 
+#	  OPTS           - User specific compile options.
+#	  USER_SRCS      - Additional user sources, such as files needed by
+#			   S-functions.
+#	  USER_INCLUDES  - Additional include paths
+#			   (i.e. USER_INCLUDES="-Iwhere-ever -Iwhere-ever2")
+#
+#       This template makefile is designed to be used with a system target
+#       file that contains 'rtwgensettings.BuildDirSuffix' see grt.tlc
+
+#------------------------ Macros read by make_rtw ------------------------------
+#
+# The following macros are read by the Real-Time Workshop build procedure:
+#
+#  MAKECMD         - This is the command used to invoke the make utility
+#  HOST            - What platform this template makefile is targeted for
+#                    (i.e. PC or UNIX)
+#  BUILD           - Invoke make from the Real-Time Workshop build procedure
+#                    (yes/no)?
+#  SYS_TARGET_FILE - Name of system target file.
+
+MAKECMD         = make
+HOST            = UNIX
+BUILD           = yes
+SYS_TARGET_FILE = RTLinuxPro.tlc
+
+#---------------------- Tokens expanded by make_rtw ----------------------------
+#
+# The following tokens, when wrapped with "|>" and "|<" are expanded by the
+# Real-Time Workshop build procedure.
+#
+#  MODEL_NAME          - Name of the Simulink block diagram
+#  MODEL_MODULES       - Any additional generated source modules
+#  MAKEFILE_NAME       - Name of makefile created from template makefile <model>.mk
+#  MATLAB_ROOT         - Path to were MATLAB is installed.
+#  S_FUNCTIONS         - List of S-functions.
+#  S_FUNCTIONS_LIB     - List of S-functions libraries to link. 
+#  SOLVER              - Solver source file name
+#  NUMST               - Number of sample times
+#  TID01EQ             - yes (1) or no (0): Are sampling rates of continuous task
+#                        (tid=0) and 1st discrete task equal.
+#  NCSTATES            - Number of continuous states
+#  COMPUTER            - Computer type. See the MATLAB computer command.
+#  BUILDARGS           - Options passed in at the command line.
+#  MULTITASKING        - yes (1) or no (0): Is solver mode multitasking
+#  EXT_MODE            - yes (1) or no (0): Build for external mode
+#  TMW_EXTMODE_TESTING - yes (1) or no (0): Build ext_test.c for external mode
+#                        testing.
+
+MODEL                = |>MODEL_NAME<|
+MODULES              = |>MODEL_MODULES<|
+MAKEFILE             = |>MAKEFILE_NAME<|
+
+USAGE = make RTL_ROOT=<RTLinuxPro's Root Dir Path> MATLAB_ROOT=<Matlab's Root Dir Path> -f $(MODEL).mk
+
+ifneq ("$(origin MATLAB_ROOT)", "command line")
+$(error $(USAGE))
+endif
+
+ifneq ("$(origin RTL_ROOT)", "command line")
+$(error $(USAGE))
+endif
+
+S_FUNCTIONS          = |>S_FUNCTIONS<|
+S_FUNCTIONS_LIB      = |>S_FUNCTIONS_LIB<|
+SOLVER               = |>SOLVER<|
+NUMST                = |>NUMST<|
+TID01EQ              = |>TID01EQ<|
+NCSTATES             = |>NCSTATES<|
+COMPUTER             = RTLinuxProx86
+BUILDARGS            = |>BUILDARGS<|
+MULTITASKING         = |>MULTITASKING<|
+
+#--------------------------- Tool Specifications -------------------------------
+include $(RTL_ROOT)/rtl.mk
+
+#------------------------------ Include Path -----------------------------------
+
+MATLAB_INCLUDES = \
+	-I$(MATLAB_ROOT)/simulink/include \
+	-I$(MATLAB_ROOT)/rtw/c/src \
+	-I$(MATLAB_ROOT)/rtw/c/libsrc \
+	-I$(MATLAB_ROOT)/rtw/c/src/ext_mode/common \
+	-I$(MATLAB_ROOT)/extern/include \
+	-I.
+
+ADD_INCLUDES = \
+	-include $(MATLAB_ROOT)/rtw/c/RTLinuxPro/rtl/rtl_math.h \
+	-include $(MATLAB_ROOT)/rtw/c/RTLinuxPro/rtl/rtl_stdio.h \
+	-include $(MATLAB_ROOT)/rtw/c/RTLinuxPro/rtl/rtltypes.h \
+	|>START_EXPAND_INCLUDES<|-I|>EXPAND_DIR_NAME<| \
+	|>END_EXPAND_INCLUDES<|
+
+INCLUDES += -I. -I.. -I$(MATLAB_ROOT)/rtw/c/RTLinuxPro $(MATLAB_INCLUDES) $(ADD_INCLUDES) $(USER_INCLUDES) \
+	$(INSTRUMENT_INCLUDES) 
+
+#----------------------------- Real-Time Model ---------------------------------
+RTM_CC_OPTS = -DUSE_RTMODEL
+
+#-------------------------------- C Flags --------------------------------------
+
+# Optimization Options
+ifndef OPT_OPTS
+OPT_OPTS = $(DEFAULT_OPT_OPTS)
+endif
+
+# General User Options
+OPTS =
+
+# Compiler options, etc:
+CC_OPTS = $(OPT_OPTS) $(OPTS) $(ANSI_OPTS) $(RTM_CC_OPTS)
+
+MODEL_DATA_FLAGS = -D __RTCORE_RTL_LIMITS_H__ -D RTL_TRACE_NAME_MAX=20
+
+CPP_REQ_DEFINES = -DMODEL=$(MODEL) -DRT -DNUMST=$(NUMST) \
+                  -DTID01EQ=$(TID01EQ) -DNCSTATES=$(NCSTATES) -DUNIX \
+                  -DMT=$(MULTITASKING) -DHAVESTDIO
+
+#CFLAGS = -I/opt/rtldk-2.2/rtlinuxpro/include/app -nostdinc -isystem /opt/rtldk-2.2/bin/../lib/gcc-lib/i386-linux/3.3.2/include/ -D__RTCORE_KERNEL__ -I/opt/rtldk-2.2/rtlinuxpro/include/app/rtl -I/opt/rtldk-2.2/rtlinuxpro/linux/include -I/opt/rtldk-2.2/rtlinuxpro/linux/include/asm/mach-default -I/opt/rtldk-2.2/rtlinuxpro/include -Wall -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -pipe -mpreferred-stack-boundary=2 -march=i586 -DMODULE -O2
+
+CFLAGS := $(filter-out -msoft-float, $(CFLAGS)) -mhard-float
+CFLAGS += $(CC_OPTS) $(CPP_REQ_DEFINES) $(INCLUDES) $(MODEL_DATA_FLAGS)
+
+#-------------------------- Additional Libraries ------------------------------
+
+RTWLIB = $(MATLAB_ROOT)/rtw/c/lib/rtwlib_RTLinuxPro.a
+LIBS += $(RTWLIB)
+
+|>START_EXPAND_LIBRARIES<|
+LIBS += |>EXPAND_LIBRARY_NAME<|.a |>END_EXPAND_LIBRARIES<|
+
+LIBS += $(S_FUNCTIONS_LIB) $(INSTRUMENT_LIBS)
+
+#----------------------------- Source Files ------------------------------------
+# expects rtlinux_main.c file here
+REQ_SRCS  = $(MODULES) $(MATLAB_ROOT)/rtw/c/RTLinuxPro/rtlinux_main.c rt_nonfinite.c rt_sim.c \
+		$(MATLAB_ROOT)/rtw/c/RTLinuxPro/rtl/rtl_stdio.c $(EXT_SRC)
+	
+USER_SRCS =
+
+USER_OBJS       = $(USER_SRCS:.c=.o)
+LOCAL_USER_OBJS = $(notdir $(USER_OBJS))
+
+SRCS      = $(REQ_SRCS) $(S_FUNCTIONS) $(SOLVER)
+OBJS      = $(SRCS:.c=.o) $(USER_OBJS)
+LINK_OBJS = $(SRCS:.c=.o) $(LOCAL_USER_OBJS)
+
+PROGRAM = $(MODEL)
+
+#--------------------------------- Rules ---------------------------------------
+# Here we need to follow procedure for multiple files to be linked into one examples/link/Makefile
+
+TARGET_RTL := $(PROGRAM).rtl
+LIBRARY_OBJS := $(OBJS)
+LDFLAGS_$(TARGET_RTL) := $(LIBRARY_OBJS) $(LIBS)
+
+LDFLAGS += -lm
+
+$(TARGET_RTL): $(LIBRARY_OBJS) $(RTWLIB)
+
+all: $(TARGET_RTL)
+
+$(MATLAB_ROOT)/rtw/c/lib/rt_matrx.o : $(MATLAB_ROOT)/rtw/c/libsrc/rt_matrx.c
+	$(CC) -c $< -D _STDDEF_H_ $(CFLAGS) -o $@
+
+$(MODEL).o : $(MODEL).c
+	$(CC) $(CFLAGS) -D_GLOBALS_ -c $<
+	
+%.o : %.c	
+	$(CC) $(CFLAGS) -c $<
+
+%.o : $(MATLAB_ROOT)/rtw/c/src/%.c
+	$(CC) -c $(CFLAGS) $<
+
+$(MATLAB_ROOT)/rtw/c/lib/%.o : $(MATLAB_ROOT)/rtw/c/libsrc/%.c
+	$(CC) -c $< $(CFLAGS) -o $@
+
+$(MATLAB_ROOT)/rtw/c/lib/%.o : $(MATLAB_ROOT)/rtw/c/libsrc/%.cpp
+	$(CPP) -c $< $(CFLAGS) -o $@
+
+%.o : $(MATLAB_ROOT)/simulink/src/%.c 
+	$(CC) -c $(CFLAGS) $<
+
+%.o : $(MATLAB_ROOT)/simulink/src/%.cpp
+	$(CPP) -c $(CFLAGS) $<
+
+|>START_EXPAND_RULES<|%.o : |>EXPAND_DIR_NAME<|/%.c
+	$(CC) -c $(CFLAGS) $(GCC_WALL_FLAG_MAX) $<
+|>END_EXPAND_RULES<|
+
+|>START_EXPAND_RULES<|%.o : |>EXPAND_DIR_NAME<|/%.cpp
+	$(CPP) -c $(CFLAGS) $<
+|>END_EXPAND_RULES<|
+
+#------------------------------- Libraries -------------------------------------
+
+|>START_EXPAND_LIBRARIES<|MODULES_|>EXPAND_LIBRARY_NAME<| = \
+|>START_EXPAND_MODULES<|	|>EXPAND_MODULE_NAME<|.o \
+|>END_EXPAND_MODULES<|
+
+|>EXPAND_LIBRARY_NAME<|.a : $(MAKEFILE) rtw_proj.tmw $(MODULES_|>EXPAND_LIBRARY_NAME<|)
+	@echo "### Creating $@ "
+	ar r $@ $(MODULES_|>EXPAND_LIBRARY_NAME<|)
+	@echo "### Created $@"
+
+|>END_EXPAND_LIBRARIES<|
+
+|>START_PRECOMP_LIBRARIES<|MODULES_|>EXPAND_LIBRARY_NAME<| = \
+|>START_EXPAND_MODULES<|	$(MATLAB_ROOT)/rtw/c/lib/|>EXPAND_MODULE_NAME<|.o \
+|>END_EXPAND_MODULES<|
+
+$(RTWLIB) : $(MAKEFILE) rtw_proj.tmw $(MODULES_|>EXPAND_LIBRARY_NAME<|)
+	@echo "### Creating $@ "
+	ar r $@ $(MODULES_|>EXPAND_LIBRARY_NAME<|)
+	@echo "### Created $@"
+
+|>END_PRECOMP_LIBRARIES<|
+
+#----------------------------- Dependencies ------------------------------------
+
+$(OBJS) : $(MAKEFILE) rtw_proj.tmw
+
+#--------- Miscellaneous rules to purge, clean and lint (sol2 only) ------------
+
+CFLAGS -= $(ADD_INCLUDES)
+include $(RTL_ROOT)/Rules.make
+
+
+purge : clean
+	@echo "### Deleting the generated source code for $(MODEL)"
+	@\rm -f $(MODEL).c $(MODEL).h $(MODEL)_types.h $(MODEL)_data.c \
+	        $(MODEL)_private.h $(MODEL).rtw $(MODULES) rtw_proj.tmw $(MAKEFILE)
+
+clean :
+	@echo "### Deleting the objects and $(PROGRAM)"
+	@\rm -f $(LINK_OBJS) $(PROGRAM)
+
+# EOF: RTLinuxPro.tmf
+
+
+
+
+

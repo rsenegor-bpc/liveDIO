@@ -1,0 +1,13 @@
+RedHat's 9 kernel is a hybrid of version 2.4 and 2.6.
+RedHat backported some features from the 2.6 source tree to 2.4 (including the 
+memory management).
+The PowerDAQ driver won't compile unmodified under RedHat9.
+
+*The preferred workaround is to use a genuine kernel from www.kernel.org.
+
+*Another workaround is to apply the patch in the directory RedHat9_patch 
+on the PowerDAQ driver.
+ cd to the directory where the driver is installed and type the command:
+   patch -p0 < RedHat9_patch
+ You should get a message telling you that the files kvmem.c and kvmem.h 
+ were patched. You can now build the driver with make.

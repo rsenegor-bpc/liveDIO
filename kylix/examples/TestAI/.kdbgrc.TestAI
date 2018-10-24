@@ -1,0 +1,22 @@
+[Breakpoint 0]
+Enabled=true
+File=TestAI.dpr
+Line=26
+Temporary=false
+
+[General]
+DebuggerCmdStr=
+FileVersion=1
+ProgramArgs=
+TTYLevel=7
+WorkingDirectory=
+
+[Memory]
+ColumnWidths=80,200
+NumExprs=0
+
+[Watches]
+Expr0=board
+Expr1=fd
+Expr2=ret
+Expr3=Cmd

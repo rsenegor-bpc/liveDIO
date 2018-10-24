@@ -1,0 +1,1 @@
+cmd_/home/mtsnlinux/Desktop/liveDIO/pwrdaq.ko := ld -r -m elf_x86_64 -T ./scripts/module-common.lds --build-id  -o /home/mtsnlinux/Desktop/liveDIO/pwrdaq.ko /home/mtsnlinux/Desktop/liveDIO/pwrdaq.o /home/mtsnlinux/Desktop/liveDIO/pwrdaq.mod.o

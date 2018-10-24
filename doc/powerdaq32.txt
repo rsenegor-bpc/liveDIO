@@ -1,0 +1,1909 @@
+================================================================================
+
+                    PowerDAQ API Function Reference
+
+
+
+
+                SDK Revision 3.6.9
+
+
+
+
+
+
+
+                (C) United Electronic Industries, 2000-2005
+                         All rights reserved
+
+================================================================================
+
+About this document:
+
+This document includes compilation notes and function reference needed to
+compile and use PowerDAQ API.
+
+PowerDAQ API includes driver and user library. Driver runs in the kernel space
+and library links as a part of user level executable.
+
+This document doesn't cover neither architecture nor ways to use PowerDAQ boards
+Please refer to the documents cover those topics:
+
+- PowerDAQ PD2-MF(S) User Manual
+- PowerDAQ PD2-AO User Manual
+- PowerDAQ PD2-DIO User Manual
+
+They are available for download at: http://www.ueidaq.com/download/manuals.html
+
+
+================================================================================
+
+
+================================================================================
+
+    FUNCTION REFERENCE
+
+Functions are located in following order:
+
+1. Board-level functions
+2. Functions applicable to any subsystem
+3. Analog input synchronous and asynchronous mode
+4. Analog output functions
+5. Digital I/O functions
+6. Specific function set for PD2-DIO series of boards
+7. Specific function set for PD2-AO series of boards
+8. UCT functions
+9. Calibration functions
+10. Process notification functions
+
+================================================================================
++
+ int PdGetVersion(PPWRDAQ_VERSION pVersion)
+ Returns version of the driver/library
+
+ Arguments: None
+ Parameters: PPWRDAQ_VERSION pVersion -- driver/dll version info
+
+ Returns: Negative error code or 0
+
+================================================================================
++
+ int PdGetNumberAdapters( void )
+ Returns number of PowerDAQ adapters installed
+
+ Arguments: None
+
+ Returns: negative error code or number of adapters
+================================================================================
++
+ int PdGetPciConfiguration(int handle, PPWRDAQ_PCI_CONFIG pPciConfig)
+ Returns PCI configuration
+
+ Arguments:  int board handle
+ Parameters: PPWRDAQ_PCI_CONFIG pPciConfig - pointer to where to
+             copy PCI configuration
+
+ Returns: Negative error code or 0
+
+ Note: To get PCI configuration you must open BoardLevel ("Drv") subsystem
+
+================================================================================
++
+ int PdAcquireSubsystem(int board, int dwSubsystem, int Action)
+
+ Opens/closes and gets/releases subsystem into/from process control
+
+ Arguments: int board
+            int subsystem
+            int action -- == 1 get ownership / == 0 release it
+
+  for open: int board is board ID [0..Max]
+  for release: int board is handle received upon opening
+
+ Returns: handle to adapter/subsystem or negative error
+
+ Note: there're 6 subsystems defined: AnalogIn, AnalogOut, DigitalIn,
+       DigitalOut, CounterTimer and BoardLevel
+       Subsystem must be opened before accessing it. Driver stores
+       handle to the subsystem and checks it before accessing.
+       Thus, there's no such thing as sharing of subsystem among
+       processes are available.
+================================================================================
++
+ Function:    _PdSetUserEvents
+
+ Parameters:  int handle -- handle to adapter
+              PD_SUBSYSTEM Subsystem  -- subsystem type
+              DWORD dwEvents  -- IN: user events to set
+
+ Returns: Negative error code or 0
+
+ Description: The Set User Events function sets and enables event
+              notification of specified user defined DAQ events.
+
+              Event bit:  1 -- enable event notification upon assertion
+                               of this event and clear event status bit.
+                          0 -- no change to event configuration or status.
+
+              Setting an event for notification enables the hardware or
+              driver event for notification upon assertion and clears the
+              event status bit.
+
+              Once the event asserts and the status bit is set, the
+              DLL/User notification is triggered and the event is
+              automatically disabled from notification and must be set
+              again before DLL/User can be notified of its subsequent
+              assertion.
+
+              User events operate in latched mode and must be cleared
+              either by calling PdSetUserEvents or PdClearUserEvents
+              to clear the event status bits.
+
+
+ Following events are defined for AnalogIn and AnalogOut subsystems:
+                AIn AOut
+ eStartTrig      +  +   Start trigger received, operation started
+ eStopTrig       +  +   Stop trigger received, operation stopped
+ eInputTrig      -  -   Subsystem specific input trigger (if any)
+ eDataAvailable  +  -   New data available
+ eScanDone       -  -   Scan done (for future use)
+ eFrameDone      +  +   One or more frames are done (or half of DAC FIFO is done)
+ eFrameRecycled  +  -   Cyclic buffer frame recycled
+                        (i.e. an unread frame is over-written by new data)
+ eBufferDone     +  +   Buffer done
+ eBufferWrapped  +  -   Cyclic buffer wrapped
+ eConvError      +  -   Conversion clock error - pulse came before board is ready
+                        to process it
+ eScanError      +  -   Scan clock error
+ eBufferError    +  +   Buffer over/under run error
+ eStopped        +  +   Operation stopped (possibly because of error)
+ eTimeout        +  -   Operation timed out
+ eAllEvents      +  +   Set/clear all events
+
+ Following events are defined for DIO and UC subsystems:
+              DIn UCT
+ eDInEvent     +   -    Digital Input event
+ eUct0Event    -   +    Uct0 countdown event
+ eUct1Event    -   +    Uct1 countdown event
+ eUct2Event    -   +    Uct2 countdown event
+
+ Notes: Events are available for AIn, AOut, DIO and UCT should be set
+        separately
+================================================================================
++
+ Function:    _PdClearUserEvents
+
+ Parameters:  int handle -- handle to adapter
+              PD_SUBSYSTEM Subsystem  -- subsystem type
+              DWORD dwEvents  -- IN: user events to clear
+
+ Returns: Negative error code or 0
+
+ Description: The Clear User Events function clears and disables event
+              notification of specified user defined DAQ events.
+
+              Event bit:  1 -- disable event notification of this event and
+                               clear the event status bit.
+                          0 -- no change to event configuration or status.
+
+              Clearing an event from notification disables the hardware
+              or driver event for notification upon assertion and clears
+              the event status bit.
+
+              All DLL calls waiting on the events that are cleared are
+              signalled.
+
+              This function can also be called to clear event status bits
+              on events that are checked by polling and were not enabled
+              for notification.
+
+ Notes:       See _PdSetUserEvents for events definition
+================================================================================
++
+ Function:    _PdGetUserEvents
+
+ Parameters:  int handle -- handle to adapter
+              PD_SUBSYSTEM Subsystem  -- subsystem type
+              DWORD *pdwEvents -- OUT: ptr to user events
+
+ Returns:     Negative error code or 0
+
+ Description: The Get User Events function gets the current user event
+              status. The event configuration and status are not changed.
+
+              Event bit:  0 -- event had not asserted.
+                          1 -- event asserted.
+
+              User events are not automatically re-enabled. Clearing
+              and thus re-enabling of user events is initiated by DLL.
+
+ Notes:       THIS FUNCTION GETS THE CURRENT EVENT STATUS, NOT THE QUEUED
+              EVENTS.
+              See _PdSetUserEvents for events definition
+================================================================================
++
+ Function:    _PdImmediateUpdate
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The Immediate Update function immediately updates the adapter
+              status, events, gets all samples acquired from adapter and
+              updates the latest sample counts.
+              Driver handles _PdImmediateUpdate like interrupt from the board,
+              so all event notification mechnisms will work properly
+
+ Notes:       Use this function in following circumstances:
+
+              1. When acquisition rate is slow. Driver transfers data
+              when FIFO becomes half-full. In other words data will not
+              appear in the buffer until 512 samples (if default 1kS FIFO
+              is installed) are acquired. So, if you, say, select frame size
+              as big as 50 samples and your rate is 100Hz you'll get 11 frames
+              per event each 5.5 s. Thus, if you want to achieve better response
+              time, put _PdImmediateUpdate call in a timer loop.
+
+              2. When you want to clock acquisition externally and clock
+              frequency may vary it's a good idea to call _PdImmediateUpdate
+              periodically to see is there any scans available
+
+              3. _PdImmediateUpdate consumes some processor time. It's not
+              recommended to call this function more then 10 times a second
+              at the high acquisition rate (>100kS/s). With a low rate it
+              seems reasonable to call _PdImmediateUpdate with up to 1000Hz
+              rate.
+================================================================================
++
+ Function:    _PdAdapterGetBoardStatus
+
+ Parameters:  HANDLE hAdapter -- handle to adapter
+              DWORD *pError   -- ptr to last error status
+              DWORD *pdwStatusBuf -- ptr to buffer to store event words
+
+ Returns:     Negative error code or 0
+
+ Description: The get board status command returns the status and
+              events of all subsystems, but does not disable or clear
+              any asserted board event bits.
+
+              All error conditions are included in the board events.
+
+              Function fills dwStatusBuf array with following information
+              (offsets are in bytes):
+
+              [+0] BrdStatus
+              [+4] combined registers PD_UDEIntr and PD_AUEStat
+              [+8] combined registers PD_AIOIntr1 and PD_AIOIntr2
+              [+12] AInIntrStat
+              [+16] AOutIntrStat
+
+ Notes:       * The get board status command does not clear, enable, or
+                disable the PC Host interrupt or board events.
+
+              * The size of pdwStatusBuf should be 5 DWORDs.
+
+              * No ack is read after last data word is read.
+
+              * This routine is optimized for fastest execution possible.
+
+================================================================================
++
+ Function:    _PdAdapterSetBoardEvents1
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwEvents  -- value of ADUEIntrStat Event configuration word
+
+ Returns:     Negative error code or 0
+
+ Description: The set board events 1 command sets selected UDEIntr register
+              event bits enabling/disabling and/or clearing individual
+              board level interrupt events, thereby re-enabling the event
+              interrupts.
+
+              Interrupt Mask (Im) bits:   0 = disable, 1 = enable interrupt
+              Status/Clear (SC) bits:     0 = clear interrupt, 1 = unchanged
+
+ Notes:       1. This function is rarely used to call directly
+
+              2. The set board events 1 command does not clear, enable,
+                 or disable the PC Host interrupt.
+================================================================================
++
+ Function:    _PdAdapterSetBoardEvents2
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwEvents  -- value of AIOIntr Event configuration word
+
+ Returns:     Negative error code or 0
+
+ Description: The set board events 2 command sets selected AIOIntr1 and
+              AIOIntr2 register event bits enabling/disabling and/or
+              clearing individual board level interrupt events, thereby
+              re-enabling the event interrupts.
+
+              Interrupt Mask (Im) bits:   0 = disable, 1 = enable interrupt
+              Status/Clear (SC) bits:     0 = clear interrupt, 1 = unchanged
+
+              In use: 1. Keep a copy of latest dwEvents word written.
+
+                      2. Boolean OR the dwEvents word to set all status
+                         (SC) bits to 1.
+
+                      3. To disable interrupts, change corresponding
+                         interrupt mask bits (Im) to 0, to enable, change
+                         mask bits to 1.
+
+                      4. To clear interrupt status bits (SC), re-enabling
+                         the interrupts, set the corresponding bits to 0.
+
+                      5. Save a copy of the new dwEvents word and issue
+                         command to set events.
+
+ Notes:       1. This function is rarely used to call directly
+
+              2. Registers PD_AIOIntr1 and PD_AIOIntr2 are combined.
+
+              3. The set board events 2 command does not clear, enable,
+                or disable the PC Host interrupt.
+
+================================================================================
++
+ Function:    int _PdAdapterEnableInterrupt
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwEnable  -- 0: disable, 1: enable Irq
+
+ Returns:     Negative error code or 0
+
+ Description: Enable or Disable board interrupt generation.
+              During interrupt generation, the PCI INTA line is
+              is asserted to request servicing of board events.
+
+ Notes:       Interrupt generation is disabled following the assertion
+              of an interrupt and must be explicitly called to re-enable
+              assertion of subsequent interrupts.
+
+              This command does not service the interrupt, i.e., it
+              does not clear an asserted PCI INTA line.
+================================================================================
++
+ Function:    int _PdRegisterBuffer
+
+ Parameters:  int handle -- handle to adapter
+              PWORD* pBuffer -- pointer to store buffer address
+              DWORD dwSubsystem -- subsystem (AnalogIn or AnalogOut)
+              DWORD dwFramesBfr -- number of frames in buffer
+              DWORD dwScansFrm -- number of scans in the frame
+              DWORD dwScanSize -- channel list (scan) size
+              DWORD  bWrapAround -- buffering mode
+                  buffering modes:
+                  0 - single run (acquisition stops after buffer becomes full)
+                  AIB_BUFFERWRAPPED - circular buffer
+                  AIB_BUFFERRECYCLED - circular buffer with frame recycling
+
+ Returns:     actual number of bytes allocated or negative value on error
+
+ Description: function allocates data buffer
+
+ Memory is allocated in the kernel space and then mmaped to the user space
+ 
+ Function returns actual number of bytes allocated or negative value
+ on error
+================================================================================
++
+ Function:    int _PdUnregisterBuffer
+
+ Parameters:  int handle -- handle to adapter
+              PWORD* pBuffer -- pointer to store buffer address
+              DWORD dwSubsystem -- subsystem (AnalogIn or AnalogOut)
+
+ Returns:     negative value on error
+
+ Description: function deallocates data buffer
+
+================================================================================
++
+ Function:    _PdAdapterEepromRead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwMaxSize -- max buffer size in words
+              WORD *pwReadBuf -- ptr to buffer to save ID data
+              DWORD *pdwWords -- num words saved in buffer
+
+ Returns:     WORDs read or negative value on error
+
+ Description: Read board ID data block from onboard SPI EEPROM.
+
+              The data block returned contains all board identification,
+              configuration, calibration settings, PN, REV, SN, Firmware
+              Version, Calibration Date, and First Use Date in a 256
+              16-bit word block.
+
+================================================================================
++
+ Function:    _PdAdapterEepromWrite
+
+ Parameters:  int handle -- handle to adapter
+              WORD *wWriteBuf -- buffer containing data to write
+              DWORD dwSize    -- write buffer size in words
+
+ Returns:     WORDs written or negative value on error
+
+ Description: Write block to SPI EEPROM.
+              The EEPROM write command writes a data block containing
+              board ID and configuration information to the onboard
+              EEPROM.
+
+ Notes:
+
+================================================================================
++
+ Function:    _PdAInAsyncInit
+
+ Parameters:  int handle -- handle to adapter
+                  DWORD  dwAInCfg           -- IN: AIn configuration word
+                  DWORD  dwAInPreTrigCount  -- IN: pre-trigger scan count (always 0)
+                  DWORD  dwAInPostTrigCount -- IN: post-trigger scan count (always 0)
+                  DWORD  dwAInCvClkDiv      -- IN: conv. start clk div.
+                  DWORD  dwAInClClkDiv      -- IN: chan. list start clk div.
+                  DWORD  dwEventsNotify     -- IN: subsys user events notif.
+                  DWORD  dwChListChan       -- IN: number of channels in list
+                  DWORD* pdwChList          -- IN: channel list data buffer
+
+ Returns:     Negative error code or 0
+
+ Description: The AIn Initialize Asynchronous Buffered Acquisition function
+              initializes the configuration and allocates memory for buffered
+              acquisiton.
+
+ Notes:       This driver function does NO checking on the hardware
+              configuration parameters, it is the responsibility of the
+              DLL to verify that the parameters are valid for the device
+              type being configured.
+
+ Configuration:
+ dwAInCfg (DWORD) - this represents a variety of configuration parameters.
+ from pdfw_def.h:
+
+ AIn Subsystem Configuration (AInCfg) Bits:
+
+ AIB_INPMODE     // AIn Input Mode (Single-Ended/Differential if set)
+ AIB_INPTYPE     // AIn Input Type (Unipolar/Bipolar if set)
+ AIB_INPRANGE    // AIn Input Range (5V/10V if set)
+ AIB_CVSTART0    // AIn Conv Start Clk Source (2 bits)
+ AIB_CVSTART1    // 00 - SW, 01 - internal, 10 - external, 11 - Continuous
+ AIB_EXTCVS      // AIn External Conv Start (Pacer) Clk Edge (falling edge if set)
+ AIB_CLSTART0    // AIn Ch List Start (Burst) Clk Source (2 bits)
+ AIB_CLSTART1    // 00 - SW, 01 - internal, 10 - external, 11 - Continuous
+ AIB_EXTCLS      // AIn External Ch List Start (Burst) Clk Edge (falling edge if set)
+ AIB_INTCVSBASE  // AIn Internal Conv Start Clk Base (11MHz/33Mhz if set)
+ AIB_INTCLSBASE  // AIn Internal Ch List Start Clk Base (11MHz/33Mhz if set)
+ AIB_STARTTRIG0  // AIn Start Trigger Source (2 bits) (SW/External if set)
+ AIB_STARTTRIG1  // rising edge / falling edge if set
+ AIB_STOPTRIG0   // AIn Stop Trigger Source (2 bits) (SW/External if set)
+ AIB_STOPTRIG1   // rising edge / falling edge if set
+
+ All other bits are to be used internally
+
+ dwAInCvClkDiv (DWORD) - sets the value for the conversion (CV) clock divider.
+   The CV clock can come from either an 11 MHz or 33 MHz base frequency.
+   The divider then reduces this frequency down to a specific sampling frequency.
+   Due to a feature in the DSP counter operation, the divider value needs to be
+   one count less than the value you want to utilize.
+   dwAInCvClkDiv = (base frequency / acquisition rate) - 1
+   (I.e. If you want a divider value of 23, you should set the dwAInCvClkDiv
+   parameter to 22.)
+
+ dwAInClClkDiv (DWORD) - sets the value for the channel list (CL) clock divider.
+   The CL clock can come from either an 11 MHz or 33 MHz base frequency.
+   The divider then reduces this frequency down to a specific scan frequency.
+   Due to a feature in the DSP counter operation, the divider value needs to be
+   one count lower than the value you want to utilize
+
+ If selected frequency is higher then possible conversion or scan rate,
+ board ignores pulses come before it is ready to process next smaple/scan
+
+ dwEventsNotify (DWORD) - this flag tells the driver upon which events it
+ should notify the application.  Each bit of the value references a specific
+ event as listed in the table below
+ Event configuration:
+
+ eStartTrig       Start trigger received, operation started
+ eStopTrig        Stop trigger received, operation stopped
+ eInputTrig       Subsystem specific input trigger (if any)
+ eDataAvailable   New data available
+ eScanDone        Scan done (for future use)
+ eFrameDone       One or more frames are done
+ eFrameRecycled   Cyclic buffer frame recycled
+                  (i.e. an unread frame is over-written by new data)
+ eBufferDone      Buffer done
+ eBufferWrapped   Cyclic buffer wrapped
+ eConvError       Conversion clock error - pulse came before board is ready to
+                  process it
+ eScanError       Scan clock error
+ eBufferError     Buffer over/under run error
+ eStopped         Operation stopped (possibly because of error)
+ eTimeout         Operation timed out
+ eAllEvents       Set/clear all events
+
+
+ dwAInScanSize (DWORD) - indicates the number of channels in each scan
+ pdwChList (pointer to a DWORD) - specify the pointer to the channel list array.
+
+================================================================================
++
+ Function:    PdAInAsyncTerm
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The AIn Terminate Asynchronous Buffered Acquisition function
+              terminates and releases memory allocated for buffered
+              acquisition.
+
+ Notes:
+================================================================================
++
+ Function:    PdAInAsyncStart
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The AIn Start Asynchronous Buffered Acquisition function starts
+              buffered acquisition.
+
+ Notes:
+================================================================================
++
+ Function:    PdAInAsyncStop
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The AIn Stop Asynchronous Buffered Acquisition function stops
+              buffered acquisition.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAInGetScans
+
+ Parameters:  int handle -- handle to adapter
+              DWORD NumScans        -- IN:  number of scans to get
+              DWORD ScanRetMode     -- IN:  mode to get scans
+                      AIN_SCANRETMODE_MMAP - use shared hernel.user space buffer
+                      AIN_SCANRETMODE_RAW  - convert and copy values into user
+                                             buffer in short format
+                      AIN_SCANRETMODE_VOLTS - convert and copy values into user
+                                              buffer in float format
+              See _PdRegisterBuffer for details
+
+              DWORD *pScanIndex     -- OUT: ptr to buffer index of first scan
+              DWORD *pNumValidScans -- OUT: ptr to number of valid scans available
+
+ Returns:     Negative error code or 0
+
+ Description: The AIn Get Scans function returns the oldest scan index
+              in the DAQ buffer and releases (recycles) frame(s) of scans
+              that had been obtained previously.
+
+ Notes:
+
+================================================================================
++
+ Function:    _PdAInSetCfg
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwAInCfg      -- AIn Configuration word
+              DWORD dwAInPreTrig  -- AIn Pre-trigger Scan Count (always 0)
+              DWORD dwAInPostTrig -- AIn Post-trigger Scan Count (always 0)
+
+ Returns:     Negative error code or 0
+
+ Description: The set AIn configuration command sets the operating
+              configuration for the AIn subsystem.
+
+ Notes:       This command is valid only when the AIn subsystem is in
+              the configuration state (acquisition disabled).
+
+ AIn Subsystem Configuration (AInCfg) Bits:
+
+ AIB_INPMODE     // AIn Input Mode (Single-Ended/Differential if set)
+ AIB_INPTYPE     // AIn Input Type (Unipolar/Bipolar if set)
+ AIB_INPRANGE    // AIn Input Range (5V/10V if set)
+ AIB_CVSTART0    // AIn Conv Start Clk Source (2 bits)
+ AIB_CVSTART1    // 00 - SW, 01 - internal, 10 - external, 11 - Continuous
+ AIB_EXTCVS      // AIn External Conv Start (Pacer) Clk Edge (falling edge if set)
+ AIB_CLSTART0    // AIn Ch List Start (Burst) Clk Source (2 bits)
+ AIB_CLSTART1    // 00 - SW, 01 - internal, 10 - external, 11 - Continuous
+ AIB_EXTCLS      // AIn External Ch List Start (Burst) Clk Edge (falling edge if set)
+ AIB_INTCVSBASE  // AIn Internal Conv Start Clk Base (11MHz/33Mhz if set)
+ AIB_INTCLSBASE  // AIn Internal Ch List Start Clk Base (11MHz/33Mhz if set)
+ AIB_STARTTRIG0  // AIn Start Trigger Source (2 bits) (SW/External if set)
+ AIB_STARTTRIG1  // rising edge / falling edge if set
+ AIB_STOPTRIG0   // AIn Stop Trigger Source (2 bits) (SW/External if set)
+ AIB_STOPTRIG1   // rising edge / falling edge if set
+
+================================================================================
++
+ Function:    _PdAInSetCvClk
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwClkDiv  -- AIn conversion start clock divider
+
+ Returns:     Negative error code or 0
+
+ Description: The set internal AIn Conversion Start (pacer) clock
+              configures the DSP Timer to generate a clock signal
+              using the specified divider from either a 11.0 MHz or
+              33.0 MHz base clock frequency.
+
+ Notes:   1. Configure AIn Conv Start clock Source to Internal in purpose to
+          utilize internal AIn Conversion Start (pacer) clock:
+          AIB_CVSTART0
+
+          2. Use AIB_INTCVSBASE to switch between Internal Conv Start Clk Base
+          (11MHz/33Mhz if the bit is set)
+
+          3. Divisor = (BaseFreq / DesiredFreq) - 1;
+
+================================================================================
++
+ Function:    _PdAInSetClClk
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwClkDiv  -- AIn channel list start clock divider
+
+ Returns:     Negative error code or 0
+
+ Description: The set internal AIn Channel List Start (scan) clock
+              configures the DSP Timer to generate a clock signal
+              using the specified divider from either a 11.0 MHz or
+              33.0 MHz base clock frequency.
+
+ Notes:   1. Configure AIn CL Start clock Source to Internal in purpose to
+          utilize internal AIn Channel List Start (scan) clock:  AIB_CLSTART0
+
+          2. Use AIB_INTCLSBASE to switch between Internal CL Start Clk Base
+          (11MHz/33Mhz if the bit is set)
+
+          3. Divisor = (BaseFreq / DesiredFreq) - 1;
+================================================================================
++
+ Function:    _PdAInSetChList
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwCh      -- number of channels in list
+              DWORD *pdwChList -- channel list data buffer
+
+ Returns:     Negative error code or 0
+
+ Description: The set channel list command programs the ADC Channel/Gain
+              List.  The ADC Channel List can contain from 1 to 256
+              channel entries.  Configuration data word for each channel
+              includes the channel mux selection, gain, and slow bit
+              setting.
+
+ Notes:       1.Use following macros to program channel list (powerdaq.h)
+              Macros for constructing Channel List entries.
+
+              #define CHAN(c)     ((c) & 0x3f)
+              #define GAIN(g)     (((g) & 0x3) << 6)
+              #define SLOW        (1<<8)
+              #define CHLIST_ENT(c,g,s)   (CHAN(c) | GAIN(g) | ((s) ? SLOW : 0))
+
+              2. Writing a Channel List block clears and overwrites the
+              previous settings.
+
+              3. Writing a channel list with 0 channel entries clears the
+              channel list.
+
+              4. There is no limit to the number of entries that can be
+              written to the channel list FIFO. You need to check CL size
+              yourself (currently up to 256 entries)
+================================================================================
++
+ Function:    _PdAInEnableConv
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwEnable  -- 0: disable, 1: enable AIn conversions
+
+ Returns:     Negative error code or 0
+
+ Description: The enable AIn conversions command enables or disables
+              AIn conversions irrespective of the AIn Conversion Start
+              or AIn Channel List Start signals.
+
+              This command permits completing AIn configuration before
+              the subsystem responds to the Start trigger.
+
+              PD_AINCVEN <== 0:   AIn subsystem Start Trigger is disabled
+                                  and ignored. Conversion in progress
+                                  will not be interrupted but the start
+                                  trigger is disabled from retriggering
+                                  the subsystem again.
+
+              PD_AINCVEN <== 1:   AIn subsystem Start Trigger is enabled
+                                  and data acquisition will start on the
+                                  first valid AIn start trigger.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAInSetEvents
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwEvents  -- AInIntrStat Event configuration word
+
+ Returns:     Negative error code or 0
+
+ Description: Set selected AIn AInIntrStat event bits enabling/disabling
+              and/or clearing individual firmware level events, thereby
+              re-enabling the event interrupts.
+
+              AInIntrStat Bit Settings:
+
+                  AIB_xxxxIm bits:    0 = disable, 1 = enable interrupt
+                  AIB_xxxxSC bits:    0 = clear interrupt, 1 = no change
+
+ Notes:       1. Used automatically inside the driver, rarely used in user code
+              2. See pdfw_def.h for the AInIntrStat event word format.
+================================================================================
++
+ Function:    _PdAInSwStartTrig
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW AIn start trigger command triggers the AIn Start
+              event to start sample acquisition.
+
+ Notes:       1. AIn Start trigger should be in software mode (bits are not set)
+              2. See _PdAInSetCfg how to set up start trigger
+================================================================================
++
+ Function:    _PdAInSwStopTrig
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW AIn stop trigger command triggers the AIn Stop
+              event to stop sample acquisition.
+
+ Notes:       1. AIn Start trigger should be in software mode (bits are not set)
+              2. See _PdAInSetCfg how to set up start trigger
+              3. If clocks are not disabled, SW stop trigger allows board
+              to complete started channel list. It means that you can use
+              start/stop trigger to control acquisition without risk of losing
+              samples.
+================================================================================
++
+ Function:    _PdAInSwCvStart
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW AIn conversion start command triggers the ADC
+              Conversion Start signal.
+
+ Notes:       AIn CV clock should be configured into software clock mode
+              See _PdAInSetCfg for details
+================================================================================
++
+ Function:    _PdAInSwCvStart
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW AIn conversion start command triggers the ADC
+              Channel List (scan) Start signal.
+
+ Notes:       AIn CL clock should be configured into software clock mode
+              See _PdAInSetCfg for details
+================================================================================
++
+ Function:    _PdAInResetCl
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The reset AIn channel list command resets the ADC channel
+              list to the first channel in the list.  This command is
+              similar to the SW Channel List Start, but does not enable
+              the list for conversions.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAInClearData
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The clear all AIn data command clears the ADC FIFO and
+              all AIn data storage buffers.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAInReset
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The reset AIn command resets the AIn subsystem to the
+              default startup configuration.  All operations in progress
+              are stopped and all configurations and buffers are cleared.
+              Any transfers in progress are signaled as terminated.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAInGetValue
+
+ Parameters:  int handle -- handle to adapter
+              WORD *pwSample  -- ptr to variable to store value
+
+ Returns:     Negative error code or 0
+
+ Description: The AIn Get Single Value command reads a single value
+              from the ADC FIFO.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAInGetDataCount
+
+ Parameters:  int handle -- handle to adapter
+              DWORD *pdwSamples  -- ptr to variable to store value
+
+ Returns:     Negative error code or 0
+
+ Description: Returns number of samples in the user registered buffer.
+
+ Notes:       AIn Async mode only
+================================================================================
++
+ Function:    _PdAInGetSamples
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwMaxSamples  -- maximal number of samples to receive
+              WORD *pwBuf         -- buffer for storing sample data
+              DWORD *pdwSamples   -- number of valid samples read
+
+ Returns:     Negative error code or number of samples
+
+ Description: The AIn Get Samples command reads upto nMaxBufSize samples
+              from the ADC FIFO until empty.
+
+ Notes:       Each sample is stored in 16 bits (signed short format)
+================================================================================
++
+ Function:    _PdAInGetXFerSamples
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwMaxSamples  -- maximal number of samples to receive (ignored)
+              WORD *pwBuf         -- buffer for storing sample data
+              DWORD *pdwSamples   -- number of valid samples read
+
+ Returns:     Negative error code or number of samples
+
+ Description: The AIn Get Samples command reads upto nMaxBufSize samples
+              from the ADC FIFO until empty.
+
+ Notes:       The difference between _PdAInGetSamples and _PdAInGetXFerSamples
+              is the follows.
+              _PdAInGetSamples transfers sample-by-sample from ADC FIFO and
+              checks for FIFO empty flag each time.
+
+              _PdAInGetXFerSamples transfers data from the ADC FIFO using DMA
+              in bursts. The size of transfer shall be selected using
+              _PdAInSetXferSize function. Selected size shall be less or
+              equal to the number of samples stored in ADC FIFO at the moment
+              you call _PdAInGetXFerSamples. If FIFO doesn't contain enough
+              samples buffer is padded with last available sample
+
+              _PdAInGetXFerSamples is a good function to use from RT-Linux
+              kernel task, when number of samples to retrieve is predefined
+================================================================================
++
+ Function:    _PdAInSetSSHGain
+
+ Description: function is obsolete. Functionality is moved into FW
+================================================================================
++
+ Function:    _PdAInSetXferSize
+
+ Parameters:  int handle -- handle to adapter
+              DWORD size  -- size of the burst transfer
+
+ Returns:     Negative error code or 0
+
+ Description: Set up DMA transfer burst size
+
+ Notes:       Don't use this function with asynchronous (buffered) mode.
+              Use _PdAInReset to return to default settings
+================================================================================
++
+ Function:    _PdAOutSetCfg
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwAOutCfg -- AOut configuration word
+              DWORD dwAOutPostTrig -- AOut Post-trigger Scan Count
+
+ Returns:     Negative error code or 0
+
+ Description: The set AOut configuration command sets the operating
+              configuration of the AOut subsystem.
+
+ Notes:       This command is valid only when the AOut subsystem is in
+              the configuration state (acquisition disabled).
+
+ AOut Subsystem Configuration (AInCfg) Bits:
+
+ AOB_CVSTART0      AOut Conv (Pacer) Start Clk Source (2 bits)
+ AOB_CVSTART1      00 - SW, 01 - internal, 10 - external
+ AOB_EXTCVS        AOut External Conv (Pacer) Clock Edge
+                   rising edge/falling edge if set
+ AOB_STARTTRIG0    AOut Start Trigger Source (2 bits) (SW/external if set)
+ AOB_STARTTRIG1    rising edge/falling edge if set
+ AOB_STOPTRIG0     AOut Stop Trigger Source (2 bits) (SW/external if set)
+ AOB_STOPTRIG1     rising edge/falling edge if set
+ AOB_REGENERATE    Switch to regenerate mode - use DAC FIFO as circular buffer
+ AOB_AOUT32        switch to PD2-AO board (format: (channel<<16)|(value & 0xFFFF))
+
+================================================================================
++
+ Function:    _PdAOutSetCvClk
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwClkDiv  -- AOut conversion start clock divider
+
+ Returns:     Negative error code or 0
+
+ Description: The set internal AOut Conversion Start (pacer) clock
+              configures the DSP Timer to generate a clock signal
+              using the specified divider from 11.0 MHz
+
+ Notes:   1. Divisor = (BaseFreq / DesiredFreq) - 1;
+================================================================================
++
+ Function:    _PdAOutSetEvents
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwEvents  -- AOutIntrStat Event configuration word
+
+ Returns:     Negative error code or 0
+
+ Description: Set selected AOut AOutIntrStat event bits enabling/disabling
+              and/or clearing individual firmware level events, thereby
+              re-enabling the event interrupts.
+
+              AOutIntrStat Bit Settings:
+
+                  AOB_xxxxIm bits:    0 = disable, 1 = enable interrupt
+                  AOB_xxxxSC bits:    0 = clear interrupt, 1 = no change
+
+ Notes:       1. Used automatically inside the driver, rarely used in user code
+              2. See pdfw_def.h for the AOutIntrStat event word format.
+================================================================================
++
+ Function:    _PdAOutGetStatus
+
+ Parameters:  int handle -- handle to adapter
+              ULONG *pdwStatus    -- AOut Event/Status word
+
+ Returns:     Negative error code or 0
+
+ Description: The get AOut status command obtains the current status
+              and events, including error events, of the AOut subsystem.
+
+ Notes:       See pdfw_def.h for the AOutIntrStat event word format.
+================================================================================
++
+ Function:    _PdAOutEnableConv
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwEnable  -- 0: disable, 1: enable AOut conversions
+
+ Returns:     Negative error code or 0
+
+ Description: The enable AOut conversions command enables or disables
+              AOut conversions irrespective of the AOut Conversion Clock
+              signal or Start Trigger. During configuration and following
+              an error condition the AOut conversion process is disabled
+              and must be re-enabled to perform subsequent conversions.
+
+              This command permits completing AOut configuration before
+              the subsystem responds to the Start trigger.
+
+              PD_AONCVEN <== 0:   AOut subsystem Start Trigger is disabled
+                                  and ignored. Conversion in progress
+                                  will not be interrupted but the start
+                                  trigger is disabled from retriggering
+                                  the subsystem again.
+
+              PD_AONCVEN <== 1:   AOut subsystem Start Trigger is enabled
+                                  and data acquisition will start on the
+                                  first valid AOut start trigger.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAOutSwStartTrig
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW AOut start trigger command triggers the AOut Start
+              event to start value output.
+
+ Notes:       Software trigger should be selected in _PdAOutSetCfg
+              Block mode only
+================================================================================
++
+ Function:    _PdAOutSwStopTrig
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW AOut stop trigger command triggers the AOut Stop
+              event to stop value output.
+
+ Notes:       Software trigger should be selected in _PdAOutSetCfg
+              Block mode only
+================================================================================
++
+ Function:    _PdAOutSwCvStart
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW AOut conversion start command triggers the DAC
+              Conversion Start signal.
+
+ Notes:       1. To use this function you should select SW clock in _PdAOutSetCfg,
+              load buffer using _PdAOutPutValues with appropriate number of
+              values and then clock them out (convert to analog) one by one
+
+================================================================================
++
+ Function:    _PdAOutClearData
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The clear all AOut data command clears the DAC latch and
+              all AOut data storage buffers.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAOutReset
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The reset AOut command resets the AOut subsystem to the
+              default startup configuration.  All operations in progress
+              are stopped and all configurations and buffers are cleared.
+              Any transfers in progress are signaled as terminated.
+
+ Notes:
+================================================================================
++
+ Function:    _PdAOutPutValue
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwValue -- value(s) to output
+
+ Returns:     Negative error code or 0
+
+ Description: The AOut put single value command writes a single value
+              to be converted and output by the specified DAC.
+
+ Notes:       This function works only with MF(S) boards. To set up output
+              value for PD2-AO series use _PdAO32Write call
+================================================================================
++
+ Function:    _PdAOutPutBlock
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwNumValues   -- number of values in buf to output
+              DWORD *pdwBuf       -- buffer containing values to output
+              DWORD *pdwCount     -- number of values successfully written
+
+ Returns:     Negative error code or 0
+
+ Description: The AOut put block command writes a block of values
+              to the DAC FIFO
+
+ Notes:       This function can be used either with PDx-MFx or PD2-AO
+              board.
+              To use it with PD2-AO boards AOB_AOUT32 bit should be set
+              in AOut configuration word.
+              DAC FIFO size is 2048 samples. If FIFO is not empty, function
+              returns the number of values it was able to write until FIFO
+              became full
+================================================================================
++
+ Function:    _PdDInSetCfg
+
+ Parameters:  int handle -- handle to adapter
+              DWORD *pError   -- ptr to last error status
+              DWORD dwDInCfg  -- DIn configuration word
+
+ Returns:     Negative error code or 0
+
+ Description: The set DIn configuration command sets the operating
+              configuration for the DIn subsystem.
+
+ DIn configuration.
+ Eight lower DIn lines on PD2-MFx boards are edge-sensitive
+ You can program DIn to fire an interrupt when particular line changes state
+ to desired one. File pdfw_def.h contains following definition, where x = [0..7]
+
+ DIB_xCFG0      DIn Bit x set rising edge to fire interrupt
+ DIB_xCFG1      DIn Bit x set falling edge to fire interrupt
+ ...
+
+ Notes:   PD2-DIO boards have their own set of functions. See _PdDIOxxx
+================================================================================
++
+ Function:    _PdDInGetStatus
+
+ Parameters:  int handle -- handle to adapter
+              DWORD *pError   -- ptr to last error status
+              DWORD *pdwEvents -- word for storing input status word
+                    Bits 0 - 7:  Digital Input Bit Level (i.e. current level)
+                    Bits 8 - 15: Digital Input Bit Trigger Status (latched data)
+
+ Returns:     Negative error code or 0
+
+ Description: The get DIn Status command obtains the current input
+              levels and the currently latched input change events
+              of all digital input signals.
+
+ Notes:       1. See pdfw_def.h for details (DIB_LEVELx and DIB_INTRx bits)
+              2. Only one bit of status per line available. Thus, if you
+              programmed board to generate interrupt, say, on any edge
+              of line 0, bit 8 will not tell you which edge caused event.
+              To find this out you need to analyze bit 0 for current line state
+              and bit 8 for latched event.
+================================================================================
++
+ Function:    _PdDInRead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD *pError   -- ptr to last error status
+              DWORD *pdwValue -- DIn Data Value word
+
+ Returns:     Negative error code or 0
+
+ Description: The DIn Read Data command obtains the current input
+              levels of all 16 digital input lines for PD2 series or
+              8 digital input lines for PD series
+
+ Notes: PDx-MFx boards only. See _PdDIO... functions for PD2-DIO board family
+
+================================================================================
++
+ Function:    _PdDInClearData
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The clear all DIn latched data command clears all stored
+              DIn data.
+
+ Notes:       Use this function after your program was informed that
+              changes occured on digital line and status was read using
+              _PdDInGtStatus. Calling this funstion you clear bits 8-15
+              of the status word
+================================================================================
++
+ Function:    _PdDInReset
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The reset DIn command resets the DIn subsystem to the
+              default startup configuration.
+ Notes:
+================================================================================
++
+ Function:    _PdDOutWrite
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwValue   -- DOut value word to output
+
+ Returns:     Negative error code or 0
+
+ Description: The DOut Write Value command updates the levels of the
+              DOut output signals.
+
+ Notes:       PD2-MFx boards have 16 DOut lines, PD-MFx boards - eight
+
+================================================================================
++
+ Function:    _PdDOutReset
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The reset DIn command resets the DIn subsystem to the
+              default startup configuration - logical 0
+
+ Notes: PDx-MFx boards have no predefined DOut states
+================================================================================
++
+ Function:    _PdDIO256CmdWrite
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwCmd     -- command to DIO
+              DWORD dwValue   -- value to write
+
+ Returns:     Negative error code or 0
+
+ Description: write the command and parameter into DIO256/AO32 board
+
+ Notes: This function can write to any address of DSP bus. So, you might
+        want to be cautious when call this function
+================================================================================
++
+ Function:    _PdDIO256CmdRead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwCmd     -- command to DIO
+              DWORD* dwValue   -- read value
+
+ Returns:     Negative error code or 0
+
+ Description: write the command and read value from DIO256/AO32 board
+
+ Notes: This function can read from any address of DSP bus. So, you might
+        want to be cautious when call this function
+================================================================================
++
+ Function:    _PdDIO256CmdRead
+
+ Description: Internal functions help to creates a command
+_
+================================================================================
++
+ Function:    _PdDIO256CmdRead
+
+ Parameters:  DWORD dwBank -- number of I/O bank (0 or 1)
+              DWORD dwRegMask -- register mask
+
+ Description: function forms bits 0-4 to write to DIO board
+
+ Notes:       1. dwBank: 0-3 = bank 0; 4-7 = bank 1 (bXX)
+              2. DIO control command when register mask is used
+                 cmd1 cmd0 r3 r2 bank r1 r0
+================================================================================
++
+ Function:    _PdDIOReset
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: Resets PD2-DIO board, disables (switches to DIn)
+              all DIO lines
+ Notes:
+
+================================================================================
++
+ Function:    _PdDIOEnableOutput
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwRegMask -- mask of the registers to enable output
+
+ Returns:     Negative error code or 0
+
+ Description: Set output enable
+
+ Notes: 1. dwRegMask selects which of 16-bit register set as DIn and which
+          as DOut. If register is in DIn it's tristated.
+          PD2-DIO64 uses only four lower bits of dwRegMask and PD2-DIO128 - eight
+          of them. Rest of the bits should be zero.
+
+        2. dwRegMask format: r7 r6 r5 r4 r3 r2 r1 r0
+          1 in the dwRegMask means that register is selected for output
+          0 means that register is selected for input
+          Example: To select registers 0,1 and 4,5 for output
+          dwRegMask = 0x33 ( 00110011 )
+================================================================================
++
+ Function:    _PdDIOLatchAll
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwRegister -- register
+
+ Returns:     Negative error code or 0
+
+ Description: Latch the state of all inputs in a bank
+              This function strobe latch signal and data presents
+              on the input lines is clocked into registers.
+              Use this function to latch all inputs are the same time
+              (simultaneously) and function _PdDIOSimpleRead to read latched
+              registers one by one (withuot re-latching them).
+
+ Notes:       Function latches data for only one bank (16 x 4 lines)
+              If you use PD2-DIO128 board with two banks you might
+              need to call this function two times - first time for the bank 0
+              (dwRegister = 0) and second time for the bank 1 (dwRegister = 4)
+================================================================================
++
+ Function:    _PdDIOSimpleRead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwRegister -- register
+              DWORD *pdwValue  -- ptr to variable to store value
+
+ Returns:     Negative error code or 0
+
+ Description: Returns value stored in the latch without strobing
+              of latch signal
+
+ Notes:       Function doesn't return tha actual state of DIn lines
+              but rather data stored when latch was strobed last time
+================================================================================
++
+ Function:    _PdDIORead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwRegister -- register
+              DWORD *pdwValue  -- ptr to variable to store value
+
+ Returns:     Negative error code or 0
+
+ Description: Strobe latch line for the register specified and
+              returns value stored in the latch
+
+ Notes:       Use this function to retrieve state of the inpupts
+              immediately
+================================================================================
++
+ Function:    _PdDIOWrite
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwRegister -- register
+              DWORD pdwValue  -- variable to write to DOut register
+
+ Returns:     Negative error code or 0
+
+ Description: Write values to digital output register
+
+ Notes:       Upon this function call value is written to the output
+              register. To see actual voltages on the ouputs, specified
+              register shall be configured as output using _PdDIOEnableOutput
+================================================================================
++
+ Function:    _PdDIOPropEnable
+
+ Parameters:  int handle -- handle to adapter
+              DWORD *pError   -- ptr to last error status
+              DWORD dwRegMask -- register mask
+
+ Returns:     Negative error code or 0
+
+ Description: Enable or disable propagate signal generation
+
+ Notes:       PD2-DIO boards have special line "Propagate" to inform external
+              device about data has been writen to the output.
+              You can select write to which register causes "propagete" pulse.
+              dwRegMask format is <r7 r6 r5 r4 r3 r2 r1 r0> where rx are
+              16-bit registers. PD2-DIO64 has only fours registers, PD2-DIO128
+              eight of them.
+              1 in the dwRegMask means that write to this register will cause
+                pulse on "porpagate" line
+              0 in the dwRegMask means that write to this register will not
+                affect this line
+              Example: dwRegMask = 0xF0. It means that any write to the bank 1
+              will cause pulse on "propagate" line and writes to the bank 0
+              will not.
+================================================================================
++
+ Function:    _PdDIOExtLatchEnable
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwBank -- bank
+              BOOL bEnable -- enable (1) or disable (0)
+
+ Returns:     Negative error code or 0
+
+ Description: Set or clear external latch enable bit for specified bank
+              bEnable = 0 - disable external latch line (default)
+              bEnable = 1 - enable external latch line
+
+ Notes:       You can enable or disable external latch line for each
+              register bank separately. If the "latch" line is enabled
+              pulse on this line will cause input registers to store
+              input signal levels.
+              You can use _PdDIOExtLatchRead function to find out was data
+              latched or not. Use _PdDIOSimpleRead function to read latched
+              data
+================================================================================
++
+ Function:    _PdDIOExtLatchRead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwRegister -- bank
+              BOOL *bLatch  -- ptr to variable to store value
+
+ Returns:     Negative error code; 0 if data wasn't latched and 1 if it was
+
+ Description: Returns status of the external latch line
+
+ Notes:       External latch pulse set external latch status bit to "1"
+              This function clears external latch status bit.
+================================================================================
++
+ Function:    _PdDIOIntrEnable
+
+ Parameters:  int handle -- handle to adapter
+              DWORD *pError   -- ptr to last error status
+              DWORD dwEnable  -- 0: disable, 1: enable DIO interrupts
+
+ Returns:     Negative error code or 0
+
+ Description: This function enables or disables host interrupt generation
+              for PD2-DIO board. Use _PdDIOSetIntrMask to set up DIO
+              interrupt mask
+
+ Notes:
+================================================================================
++
+ Function:    _PdDIOSetIntrMask
+
+ Parameters:  int handle -- handle to adapter
+              DWORD* dwIntMask -- interrupt mask (array of 8 DWORDs)
+
+ Returns:     Negative error code or 0
+
+ Description: This function sets up interrupt mask. PD2-DIO is capable to
+              generate host interrupt when selected bit changes its state.
+              dwIntMask is array of 8 DWORDs each of them correspondes to
+              one register of PD2-DIO board.
+              Only lower 16 bits are valid
+
+ Notes:
+================================================================================
++
+ Function:    _PdDIOGetIntrData
+
+ Parameters:  int handle -- handle to adapter
+              DWORD* dwIntData    -- array to store int data (8 DWORDs)
+              DWORD* dwEdgeData   -- array to store edge data (8 DWORDs)
+
+ Returns:     Negative error code or 0
+
+ Description: Function returns cause of interrupt
+              dwIntData contains "1" in position where bits have changed
+              their states. Only LSW is valid
+              dwEdgeData bits are valid only in the positions where dwIntData
+              contains "1"s. If a bit is "1" - rising edge caused the
+              interrupt, if a bit is "0" - falling edge occurs.
+
+ Notes:       AND dwEdgeData and dwIntData with dwIntMask to mask "not care"
+              bits
+
+================================================================================
++
+ Function:    _PdDIODMASet
+
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwOffset -- DSP DMA channel 0 offset register
+              DWORD dwCount -- DSP DMA channel 0 count register
+              DWORD dwSource -- DSP DMA channel 0 source register
+
+ Returns:     Negative error code or 0
+
+ Notes: Use constants frm pdfw_def.h for proper operations
+
+================================================================================
++
+ Function:    _PdDspRegWrite
+
+ Parameters:  int handle -- handle to adapter
+              DWORD reg   -- DSP register to write to
+              DWORD data -- data to write
+
+ Returns:     Negative error code or 0
+
+ Description: This functions allows to write to specified DSP register
+
+================================================================================
++
+ Function:    _PdDspRegRead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD reg   -- DSP register to read from
+              DWORD *data -- data read
+
+ Returns:     Negative error code or 0
+
+ Description: This functions allows to read specified DSP register
+
+================================================================================
++
+ Function:    _PdAO32Reset
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: Reset PD2-AO32 subsystem to 0V state
+
+ Notes:
+================================================================================
++
+ Function:    _PdAO32Write
+
+ Parameters:  int handle -- handle to adapter
+              WORD   wChannel -- number of channel to write
+              WORD   wValue -- value to write
+
+ Returns:     Negative error code or 0
+
+ Description: Write and update analog output immediately
+
+ Notes:
+================================================================================
++
+ Function:    _PdAO32WriteHold
+
+ Parameters:  int handle -- handle to adapter
+              WORD   wChannel -- number of channel to write
+              WORD   wValue -- value to write
+
+ Returns:     Negative error code or 0
+
+ Description: Write and update analog output upon PdAO32Update command
+
+ Notes:
+================================================================================
++
+ Function:    _PdAO32Update
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: Update all outputs with previously written values
+
+ Notes:       Use this function in pair with _PdAO32Write.
+              Write values to the DACs you want to update. Values will
+              be stored in registers. Then _PdAO32Update outputs stored
+              values to DACs
+================================================================================
++
+ Function:    _PdAO32SetUpdateChannel
+
+ Parameters:  int handle -- handle to adapter
+              WORD   wChannel -- number of channel to write
+              BOOL   bEnable -- 1 to enable, 0 to release
+
+ Returns:     Negative error code or 0
+
+ Description: Set channel number writing to which updates all values
+
+ Notes:       You can set channel which will trigger DACs update line
+              You might want to write data to all needed registers and
+              update them on the last write to selected register
+
+================================================================================
++
+ Function:    _PdUctSetCfg
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwUctCfg  -- UCT configuration word
+
+ Returns:     Negative error code or 0
+
+ Description: The set User Counter/Timer configuration command sets the
+              clock and gate for the specified user counter/timer.
+
+ Notes:       1. UCT configuration bits are defined in pdfw_def.h
+
+ UTB_CLK0       UCT 0 Clock Source (2 bits)
+ UTB_CLK0_1     00 - SW clock; 01 - Internal 1MHz clock
+                11 - external clock
+ UTB_CLK1       UCT 1 Clock Source (2 bits)
+ UTB_CLK1_1     00 - SW clock; 01 - Internal 1MHz clock
+                10 - UCT0 output; 11 - external clock
+ UTB_CLK2       UCT 2 Clock Source (2 bits)
+ UTB_CLK2_1     00 - SW clock; 01 - Internal 1MHz clock
+                10 - UCT0 output; 11 - external clock
+ UTB_GATE0      UCT 0 Gate Source bit: 0 - SW, 1 - external gate
+ UTB_GATE1      UCT 1 Gate Source bit: 0 - SW, 1 - external gate
+ UTB_GATE2      UCT 2 Gate Source bit: 0 - SW, 1 - external gate
+ UTB_SWGATE0    UCT 0 SW Gate Setting bit: 0 - UCT disable, 1 - UCT enable (gate high)
+ UTB_SWGATE1    UCT 1 SW Gate Setting bit: 0 - UCT disable, 1 - UCT enable (gate high)
+ UTB_SWGATE2    UCT 2 SW Gate Setting bit: 0 - UCT disable, 1 - UCT enable (gate high)
+
+              2. To write value to UCT (82C54) you need to have some clock on
+                its input. The best way to do is to enable internal 1Mhz clock
+                and disable counting (put gate low)
+
+              3. Check datasheet of Intel 82C54 for further details
+================================================================================
++
+ Function:    _PdUctGetStatus
+
+ Parameters:  int handle -- handle to adapter
+              DWORD* pdwStatus -- UCT subsystem status
+
+ Returns:     Negative error code or 0
+
+ Description: The UCT status command obtains the output levels and
+              latched event bits that signaled an event of the three
+              user counter/timers (0, 1, 2).
+
+              UctStatus format:
+
+                  $000 00xx
+
+                      bbb bbb
+                       |   |__UCTxOut
+                       |_____UCTxIntrSC
+
+ UCT status word format is defined in pdfw_def.h:
+
+ UTB_LEVEL0   UCT 0 Output Level
+ UTB_LEVEL1   UCT 1 Output Level
+ UTB_LEVEL2   UCT 2 Output Level
+ UTB_INTR0    UCT 0 Latched Interrupt
+ UTB_INTR1    UCT 1 Latched Interrupt
+ UTB_INTR2    UCT 2 Latched Interrupt
+
+ Notes:
+================================================================================
++
+ Function:    _PdUctWrite
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwUctWord -- data and command combined together
+
+ Returns:     Negative error code or 0
+
+ Description: The UCT Write command writes two or three bytes to the
+              specified user counter/timer registers.
+
+              dwUctWord format:
+              31     24       16        8        0
+              |xxxxxxxx|___MSB__|___LSB__|_cntrl__|
+
+              cntrl - UCT control word. See below
+
+ Notes:
+ 1. Following definitions are useful to work with UCT subsystem
+
+ 82C54 Control Word Format (CWF):
+
+ bit definitions
+ #define UCT_BCD     (1<<0)   // BCD mode (0 - binary 16-bit cntr, 1 - BCD cntr)
+ #define UCT_M0      (1<<1)   // mode bit
+ #define UCT_M1      (1<<2)   // mode bit
+ #define UCT_M2      (1<<3)   // mode bit
+ #define UCT_RW0     (1<<4)   // read/write mode
+ #define UCT_RW1     (1<<5)   // read/write mode
+ #define UCT_SC0     (1<<6)   // counter select
+ #define UCT_SC1     (1<<7)   // counter select
+
+ a. counter select
+ #define UCT_SelCtr0     (0)                // select counter 0
+ #define UCT_SelCtr1     (UCT_SC0)          // select counter 1
+ #define UCT_SelCtr2     (UCT_SC1)          // select counter 2
+ #define UCT_ReadBack    (UCT_SC0|UCT_SC1)  // Read-Back Command
+
+ b. mode select
+ #define UCT_Mode0       (0)              // output high on terminal count
+ #define UCT_Mode1       (UCT_M0)         // retriggerable one-shot (use gate to retrigger)
+ #define UCT_Mode2       (UCT_M1)         // rate generator
+ #define UCT_Mode3       (UCT_M0|UCT_M1)  // square wave generator
+ #define UCT_Mode4       (UCT_M2)         // software triggered strobe
+ #define UCT_Mode5       (UCT_M0|UCT_M2)  // hardware triggered strobe
+
+ c. read/write mode
+ #define UCT_RWlsb       (UCT_RW0)            // r/w LSB only
+ #define UCT_RWmsb       (UCT_RW1)            // r/w MSB only
+ #define UCT_RW16bit     (UCT_RW0|UCT_RW1)    // r/w LSB first then MSB
+ #define UCT_CtrLatch    (0)                  // Counter Latch Command (read)
+
+ You need to combine a+b+c to write command to the counter
+
+ 2. To write value to UCT (82C54) you need to have some clock on
+   its input. The best way to do is to enable internal 1Mhz clock
+   and disable counting (put gate low)
+
+================================================================================
++
+ Function:    _PdUctRead
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwUctReadCfg  -- UCT Read format word
+              DWORD *pdwUctWord   -- UCT Word to store word read
+
+ Returns:     Negative error code or 0
+
+ Description: The UCT Read command reads 0, 1, 2, or 3 bytes from the
+              specified user counter/timer registers.
+
+ Notes:
+
+ For read operation PDx-MFx UCT subsystem has a control word format:
+          15      8         0
+          |_FWCW___|_CWF____|  , FWCW is a firmware control word
+
+ Use following definitions to make dwUctReadCfg
+
+ a. operation parameters - firmware control word (bits 8-15)
+
+ #define UCTREAD_CFW     (1<<8)   // use command-word format (CWF)(see _PdUctWrite)
+                                  // if this bit is 0 function ignores CWF bits
+ #define UCTREAD_UCT0    (0)      // counter 0 (lines A1, A0)
+ #define UCTREAD_UCT1    (1<<9)   // counter 1 (lines A1, A0)
+ #define UCTREAD_UCT2    (2<<9)   // counter 2 (lines A1, A0)
+ #define UCTREAD_0BYTES  (0)      // read 0 bytes
+ #define UCTREAD_1BYTE   (1<<11)  // read 1 byte.  data: [LSB]
+ #define UCTREAD_2BYTES  (2<<11)  // read 2 bytes. data: [MSB, LSB]
+ #define UCTREAD_3BYTES  (3<<11)  // read 3 bytes. data: [MSB, LSB, StatusByte]
+
+ b. There's rare need to program CWF yourself. The simplest way to read from
+  UCT is to combine flags UCTREAD_UCTx + UCTREAD_yBYTES
+
+  if UCTREAD_CFW is "1" you have to supply CWF (it it's "0" FW forms CWF
+  automatically).
+  If you've selected "1" to provide read configuration command yourself you
+  can chose one of the three read methods:
+  1. read  2. counter latch  3. read-back
+
+  See Intel 82C54 datasheet for details
+================================================================================
++
+ Function:    _PdUctSwSetGate
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwGateLevels -- gate levels to set for each
+                                    counter/timer
+
+ Returns:     Negative error code or 0
+
+ Description: The SW UCT gate setting command sets the UCT gate input
+              levels of the specified User Counter/Timers, thus enabling
+              or disabling counting by software command.
+
+                        2  1  0
+              Format: [g2 g1 g0] - set 0 to put gate low, 1 to put gate high
+
+ Notes:
+
+================================================================================
++
+ Function:    _PdUctSwClkStrobe
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The SW UCT clock strobe command strobes the UCT clock
+              input of all User Counter/Timers that are configured for
+              the SW Command Clock Strobe.
+
+ Notes:
+
+================================================================================
++
+ Function:    _PdUctReset
+
+ Parameters:  int handle -- handle to adapter
+
+ Returns:     Negative error code or 0
+
+ Description: The reset UCT command resets the UCT subsystem to the
+              default startup configuration.  All operations in progress
+              are stopped and all configurations are cleared.
+
+ Notes:
+================================================================================
++
+ Function:    _PdCalDACWrite
+
+ Parameters:  int handle -- handle to adapter
+              DWORD dwCalDACValue -- Cal DAC adrs and value to output
+                                     bits 0-7:  8bit value to output
+                                     bits 8-10: 3bit DAC output select
+                                     bit  11:   Cal DAC 0/1 select
+
+ Returns:     Negative error code or 0
+
+ Description: The Cal DAC Write command writes the DAC select adrs and
+              value to the specified calibration DAC.
+
+ Notes:       This function updates the driver's AIn configuration and
+              calibration table.
+
+================================================================================
++
+ Function:    _CalDACSet
+
+ Parameters:  int handle -- handle to adapter
+              DWORD *pError   -- ptr to last error status
+              int nDAC        -- Cal DAC selection (0/1)
+              int nOut        -- DAC Output selection (0-7)
+              int nValue      -- Value to output (0-255)
+
+ Returns:     Negative error code or 0
+
+ Description: Calls function PDFWCalDACWrite() to set calibration DAC.
+
+ Notes:       * THIS FUNCTION IS NOT PART OF THE INTERFACE *
+
+================================================================================
++
+ Function:    _PdSetAsyncNotify
+
+ Parameters:  int handle -- handle to adapter
+              struct sigaction *io_act -- structure to store sigaction
+              void (*sig_proc)(int) -- function to call upon signal
+
+ Returns:     Negative error code or 0
+
+ Description: Sets up event notification handler for user application
+
+ Notes:       Linux version of PdXXXSet/ClearPrivateEvent().
+              See StreamL.c for usage.
+
+================================================================================
+
+ Function: _PdWaitForEvent
+
+ Parameters: int handle -- handle to subsystem
+             int event -- event flags (see _PdSetUserEvents)
+             int timeoutms -- ms to wait event
+
+ Returns: Event flags associated with adapter subsystem (lower 24 bits)
+          Negative on error
+
+ Description: This function issues blocking I/O request to
+              the adapter subsystem associated with the handle
+              If event happened before timeout (in ms) expires
+              function return event flags (24 bits)
+              Function returns -ETIMEDOUT if no event happens in timeoutms 
+              milliseconds.
+              Function returns -EIO on other errors
+              If timeoutms = 0xffffffff function waits indefinetly
+              If timeoutms = 0 function returns pending events (no wait)
+              
+ Note: this is a blocking call to the driver. It means that your process
+       will not be executed until function returns. Thus, a good idea is
+       to call this function from the separate thread responsible of
+       handling events for particular subsystem or child process created
+       using fork()
+
+================================================================================
+
+

@@ -1,0 +1,11 @@
+This utility is designed to check that the size of the FIFOs
+written in the board's EEPROM matches the size of the FIFOs
+physically installed on the PowerDAQ board.
+
+If a difference is found, FifoFix updates the board's EEPROM
+with the true FIFO size.
+
+If FifoFix reports a problem and fixes the EEPROM, you need
+to unload and reload the PowerDAQ kernel module so that it
+can refresh its internal parameters with the updated EEPROM.
+

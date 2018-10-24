@@ -1,0 +1,33 @@
+Index: kvmem.c
+===================================================================
+RCS file: /usr/local/cvs/PowerDAQ_Linux_Rev3/kvmem.c,v
+retrieving revision 1.7
+diff -u -r1.7 kvmem.c
+--- kvmem.c	11 May 2005 17:24:43 -0000	1.7
++++ kvmem.c	15 Sep 2005 23:54:12 -0000
+@@ -126,7 +126,7 @@
+       if (remap_page_range(vma,start,kvirt_to_phys(pos), PAGE_SIZE,
+          vma->vm_page_prot ))
+ #else
+-      if (remap_page_range(start,kvirt_to_phys(pos), PAGE_SIZE,
++      if (remap_page_range(vma,start,kvirt_to_phys(pos), PAGE_SIZE,
+          vma->vm_page_prot ))
+ #endif
+       {
+       
+Index: include/kvmem.h
+===================================================================
+RCS file: /usr/local/cvs/PowerDAQ_Linux_Rev3/include/kvmem.h,v
+retrieving revision 1.5
+diff -u -r1.5 kvmem.h
+--- include/kvmem.h	22 May 2005 02:35:54 -0000	1.5
++++ include/kvmem.h	15 Sep 2005 23:56:40 -0000
+@@ -68,7 +68,7 @@
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 0)
+             pte = *(pte_offset_kernel(pmd, adr));
+ #else
+-            pte = *(pte_offset(pmd, adr));
++            pte = *(pte_offset_kernel(pmd, adr));
+ #endif
+             if(pte_present(pte))
+ #if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,3,0))

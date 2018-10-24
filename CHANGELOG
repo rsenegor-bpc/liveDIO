@@ -1,0 +1,85 @@
+3.6.25 Updated support for kernel 3.12
+3.6.24 Updated support for kernel >= 3.0
+3.6.23 Updated support for kernel 2.6.38
+3.6.22 Updated support for kernel 2.6.34
+3.6.21 Updated support for kernel 2.6.29
+       Updated support for Xenomai 2.4.x
+3.6.20 Added support for API changes in kernel 2.6.26
+       Fixed error when compiling shared library with gcc 4.2
+       Updated AO firmware that implements eStartTrigger event
+       Updated DIO firmware to fix spurious word when running in buffered mode
+3.6.19 Added support for API changes in kernel 2.6.23
+3.6.18 Added support for API changes in kernel 2.6.19 and 2.6.20
+3.6.17 Added support for API change in kernel 2.6.18
+3.6.16 Added new API _PdDIOReadAll and _PdDIOWriteAll to read/update all ports
+       of a DIO board simultaneously.
+3.6.15 Updated DIO firmware
+3.6.14 Fixed issue with AO board external memory
+3.6.12 Updated DIO and MF board firmware.
+3.6.11 Added support for Simulink and Real-Time workshop
+      Added support for API change in kernel 2.6.15
+3.6.10 Refactored source code organisation, Added support
+      for the real-time extension Xenomai.
+3.6.9 Added support for API change in kernel 2.6.13
+3.6.8 Added support for RTLinuxPro 2.x
+3.6.7 Added support for sysfs and udev to dynamically create device nodes 
+      in /dev when the driver is loaded
+3.6.6 Added support for Real-time Bus master mode (for XPCMOD boards)
+      Fixed compile error with kernel version > 2.6.10
+3.6.5 Added support for RTAI under kernel 2.6. Firmware update.
+      Added support for short-burst bus master transfers
+3.6.4 Firmware update.
+3.6.3 Fixed immediate update bug. Firmware update.
+3.6.2 Fixed bug with simultaneous update on PD2-AO32 boards
+3.6.1 Fixed race condition when calling interruptible_sleep()..
+3.6   Added support for AMD64 processors
+3.5.1 Fixed issues with Fedora Core2. Added example BufferedAI_Async
+      Added support for 3MHz Multifunction boards
+3.5   Added support for kernel 2.6.x. Added examples BufferedAI_Multiboards, BufferedAIAO
+3.4   Added support for PD2-DIOxx-TS boards.
+3.3   Fixed bugs with SMP computers and computers with more than 1Gb of memory
+3.1   Added support for Bus Master data transfer.
+3.0   Added support for buffered AO,DI,DO and UCT. Added support for buffered I/O 
+      under RTLinux and RTAI. Added support for PowerDAQ Lab boards.
+      Added examples : BufferedDI, BufferedDO
+2.0   Added LabVIEW support and added examples : SingleDI, SingleDO,
+      UCTDSP, UCT
+1.3   Added support for  Kylix, added examples : SingleAI, SingleAO
+      BufferedAI, BufferedAO
+1.2   Added support for kernel 2.4.x
+1.1.2 Two examples added: Stream2 strams data from analog input to disk file,
+      rtl_int_ai shows how to process AIn interrupts under RTLinux.
+      When you compile driver with _PD_RT it doesn't request interrupts from
+      Linux. We also tested driver with Suse 7.1 (kernel 2.4.6).
+1.1   New hardware supported, new firmware improves performance,
+      PdImmediateUpdate bug fixed
+      See pdfw_if.h for the new functions added (PD2-AO-xx and PD2-DIO-xx)
+1.0   Driver module name is changed to pwrdaq.o to satisfy RedHat users
+      PdAcquireSubsystem() fixed, _PdWaitForEvent() added - now you don't need
+      to process SIGIO event. In Async mode you can use WaitForEvent or
+      simple blocked read/write
+      StreamW example added uses this function
+      tt.c example shows how to use threads in Linux
+0.9   XFer fixed, access to DSP registers added
+0.87  Buffering mechanism was changed. Now big chunk of memory can be distributed
+      in the kernel space. Then, user-level library mmap() this chunk of memory
+      into user space for share use. PowerDAQ API manual is written and added
+      to the installation. All available at the user/kernal level functions are
+      clearly commented. Library powerdaq32.c could be compiled to use in the
+      user space or in the kernel space with RT modules.
+0.86  conditional compilation for RT-Linux added. Note: all memory allocation and
+      memory copying functions are moved to the powerdaq.c from the library.
+      Library is done fully OS-independent. Please see changes in compilation
+      procedure
+0.85  AO32 fixed
+0.84  PdAInGetSamples and PDAOutPutBlock fixed. PD-DIO FIFO size fixed
+0.83: GetScans now can return raw data or voltages. AIn async mode broken since
+      0.81 is fixed.
+0.82: All user-space access functions are moved out of kernel-dependent part.
+      You no longer need to recompile library to use with RT-Linux
+0.81: Driver is split into kernel-dependent and kernel-independent parts
+
+
+
+
+

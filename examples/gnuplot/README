@@ -1,0 +1,20 @@
+gnuplot.c implements a helper function that invokes gnuplot
+to display the acquired data. 
+
+You need to have the gnuplot package installed to take advantage
+of this function.
+
+You can reuse it in your program by adding the gnuplot.c and 
+gnuplot.h files to your project and calling the function:
+
+int sendDataToGnuplot(int handle, float x0, float dX,
+                      double *buffer, int nbOfPointsPerCh,
+                      int nbOfCh);
+
+handle is the handle of the acquisition session returned by _PdAquireSubsystem.
+x0 is the origin of the x axis
+dX is the increment between each points on the x axis
+buffer contains the acquired data
+nbOfPointsPerCh contains the number of sampels acquired for each channel
+nbOfCh contains the number of channels
+		      

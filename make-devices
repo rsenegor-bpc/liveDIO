@@ -1,0 +1,103 @@
+#!/usr/bin/perl -w
+
+# Try to detect whether udev is installed and running
+my $rule_num = "95";
+my $kern_eq = "KERNEL==";
+my $name_val = " NAME=\"%k\",";
+my $use_udev = 0;
+if (open(*INPUTFILE, '/etc/udev/udev.conf'))
+{
+    while (<INPUTFILE>)
+    {
+        if (m/^\s*udev_db\s*=\s*\"([^"]*)\"/ || m/^\s*udev_db\s*=\s*(\S+)/)
+        {
+            if (-e $1)
+            {
+                $use_udev = 1;
+                $rule_num = "02";
+                $kern_eq = "KERNEL=";
+            }
+            last;
+        }
+    }
+    close INPUTFILE;
+}
+
+if (!$use_udev && -e '/dev/.udev/db')
+{
+    $use_udev = 1;
+}
+
+if (!$use_udev && open(*INPUTFILE, 'udevadm info --root 2>/dev/null |'))
+{
+    while (<INPUTFILE>)
+    {
+        if (m/^\s*(\/\S+)/)
+        {
+            if (-e $1)
+            {
+                $use_udev = 1;
+                $name_val = "";
+            }
+            last;
+        }
+    }
+    close INPUTFILE;
+}
+
+# if udev is running, copy our rule file to udev's configuration
+# directory
+if($use_udev)
+{
+    open(RULES, "> /etc/udev/rules.d/$rule_num-pwrdaq.rules");
+    print RULES "$kern_eq\"pd-c[0-9]*\", $name_val MODE=\"0666\"\n";
+    close(RULES);
+    if (-x '/sbin/udevstart')
+    {
+        print("Running udevstart, please wait....\n");
+	system("/sbin/udevstart");
+    }
+    elsif (-x '/sbin/start_udev')
+    {
+	print("Running start_udev, please wait....\n");
+	system("/sbin/start_udev");
+    }
+}
+else # if no udev, create static device nodes
+{
+    $base_dir = "/dev";
+
+    $max_cards = 8;
+    $major = 61;
+    $minor_range = 7;
+    
+    system("rm -f $base_dir/pd-*");
+    
+    for ($card = 0; $card < $max_cards; $card ++) {
+        print "pd card $card\n";
+        $minor = $card * $minor_range;
+    
+        system("mknod $base_dir/pd-c$card-ain c $major $minor");
+        $minor ++;
+    
+        system("mknod $base_dir/pd-c$card-aout c $major $minor");
+        $minor ++;
+    
+        system("mknod $base_dir/pd-c$card-din c $major $minor");
+        $minor ++;
+    
+        system("mknod $base_dir/pd-c$card-dout c $major $minor");
+        $minor ++;
+    
+        system("mknod $base_dir/pd-c$card-uct c $major $minor");
+        $minor ++;
+    
+        system("mknod $base_dir/pd-c$card-drv c $major $minor");
+        $minor ++;
+    
+        system("mknod $base_dir/pd-c$card-dspct c $major $minor");
+    
+    
+        system("chmod 0666 $base_dir/pd-*");
+    }
+}

@@ -1,0 +1,153 @@
+
+Installing the PowerDAQ for Linux driver
+========================================
+
+In order to compile the PowerDAQ kernel module and shared library, 
+you will need to have a correctly configured Linux kernel source tree.  
+The best way to get one is to download a tarball from kernel.org and
+compile your own kernel.  PowerDAQ works with 2.2, 2.4 and 2.6 Linux 
+kernels. 
+
+
+* RTAI support:
+
+If you want to use the real-time capabilities of PowerDAQ with
+RTAI, you need to first compile and install RTAI.  
+Known working versions are RTAI 3.x and current RTAI CVS.  
+Edit the Makefile and set the variable RTAI_DIR to the location of
+your RTAI installation.
+Compile the driver with the option RTAI=1.
+RTAI's LXRT user space real-time is not supported.
+You need to load the rtai_hal.ko module as well as one of the
+RTAI's scheduler modules such as rtai_up.so before trying to load
+the PowerDAQ's driver kenel module.
+
+
+* RTLinuxFree support:
+
+If you want to use the real-time capabilities of PowerDAQ with
+RTLinuxFree, you need to first compile RTLinuxFree (both the kernel and the
+modules).  Known working versions are 2.x and 3.x.
+Edit the Makefile and set the variable RTLINUX_DIR to the location of
+your RTLinux installation.
+Compile the driver with the option RTL=1.
+
+
+* RTLinuxPro support:
+
+If you want to use the real-time capabilities of PowerDAQ with
+RTLinuxPro, you need to first install RTLinuxPro.
+Known working versions are 1.1, 2.1 and 2.2.
+Edit the Makefile and set the variable RTLINUXPRO_DIR to the location of
+your RTLinuxPro installation.
+Compile the driver with the option RTLPRO=1.
+You need to load the RTLinuxPro rtcore.rtl first before trying to load
+the PowerDAQ driver.
+
+
+* Xenomai support:
+
+The PowerDAQ driver supports real-time operations on a Xenomai system.
+You need to first install Xenomai and make sure that the RTDM support 
+is enabled.
+Known working versions are 2.0 to 2.4.7.
+Edit the PowerDAQ Makefile and set the variable XENOMAI_DIR to the location
+of your Xenomai installation.
+Compile the driver with the option XENOMAI=1.
+
+* Compiling:
+
+Compile using 'make'. It will compile the kernel module, the shared 
+library.
+To compile the driver for RTLinuxFree use 'make RTL=1'.
+To compile the driver for RTLinuxPro use 'make RTLPRO=1'.
+To compile the driver for RTAI use 'make RTAI=1'.
+To compile the driver for Xenomai use 'make XENOMAI=1'
+
+You can also specify the option 'DEBUG=1' to compile the kernel driver
+and shared library in debug mode. This will generate a lot of debug
+output in the system's log. You can view the debug ouputs with the
+command 'dmesg' or by examining the file /var/log/messages.
+
+* Installation:
+
+Install using 'make install' as root.  This installs the files:
+
+  /lib/modules/<<kernel version>>/misc/pwrdaq.o for kernels 2.4.x 
+  /lib/modules/<<kernel version>>/misc/pwrdaq.ko for kernels 2.6.x 
+  /usr/local/lib/libpowerdaq32.so.1.0
+  
+and run the depmode and ldconfig utilities to register those component
+with your system.
+
+The install script will also ask if you want to install the LabVIEW library.
+If you answer Y it will then prompt you for the location of LabVIEW on your
+file system and start copying the VIs.
+
+
+* Loading and testing the driver for Linux, RTLinuxFree or RTAI
+
+Load the driver using 'modprobe pwrdaq' and test that it detected
+your boards by issueing the command 'cat /proc/pwrdaq'. It should
+list all the PowerDAQ boards that were found on your system.
+
+Note that if you want to install your own IRQ handler under RTLinux or RTAI
+you need to load the driver with the option "rqstirq=0" so that it won't install
+any IRQ handler. When this option is added the buffered AI/AO/DI/DO functionnality
+is no longer available.
+
+You can then run some of the examples to test your board:
+
+SingleAI will test the analog input subsystem
+SingleAO will test the analog output subsystem
+SingleDI will test the digital input subsystem
+SingleDO will test the digital output subsystem
+SingleUCT will test the counter/timer subsystem
+
+You can set-up your system to automatically load the powerdaq driver
+the first time it is needed by adding the following line to the file
+/etc/modules.conf for kernels 2.4.x or /etc/modprobe.conf for kernels
+2.6.x:
+alias char-major-61  pwrdaq
+
+* Loading and testing the driver for RTLinuxPro
+
+The compiled driver for RTLinuxPro is named pwrdaq.rtl. You can load it
+by simply running the command "./pwrdaq.rtl" like any other RTLinuxPro 
+application.
+
+You can then compile and run any of the examples located in the directory
+examples/rtlinuxpro.
+
+* Selecting the data transfer mode
+
+There are three data tranfer modes:
+-Normal mode: slowest mode, transfer samples from the board FIFO to memory one by one.
+-Fast mode: faster, uses assembly instruction REP to accelerate transfer between the board FIFO and the memory
+-Bus master mode: fastest, uses DMA to transfer data between the board FIFO and the memory without involving the CPU
+-Bus master with short bursts mode: uses DMA with short bursts to transfer data, this mode is useful when
+   there are several PCI bridges between the PowerDAQ board and the CPU.
+
+The default mode is Fast mode. To switch modes you can use the option "xferMode=" when loading the driver.
+
+To use Normal mode: insmod pwrdaq.o xferMode=0
+To use Fast mode: insmod pwrdaq.o xferMode=1
+To use BM mode: insmod pwrdaq.o xferMode=2
+
+* Using the PowerDAQ library from C/C++
+
+The best way to start is to take one of the examples Makefile as a template.
+You need to include the following header files in your source code:
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include "win_sdk_types.h"
+#include "powerdaq.h"
+#include "powerdaq32.h"
+
+
+you also need to link your application with the PowerDAQ shared library by 
+adding "-lpowerdaq32" to your linker options.
+

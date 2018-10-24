@@ -1,0 +1,1 @@
+cmd_/home/mtsnlinux/Desktop/liveDIO/pwrdaq.o := ld -m elf_x86_64   -r -o /home/mtsnlinux/Desktop/liveDIO/pwrdaq.o /home/mtsnlinux/Desktop/liveDIO/powerdaq.o /home/mtsnlinux/Desktop/liveDIO/powerdaq_isr.o /home/mtsnlinux/Desktop/liveDIO/powerdaq_osal.o /home/mtsnlinux/Desktop/liveDIO/pdfw_lib/pdfw_lib.o 

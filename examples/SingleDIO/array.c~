@@ -1,0 +1,56 @@
+/*count number of digits*/
+/*int c = 0; //digit position
+int n = ffd562;
+
+while (n != 0) {
+n /= 10;
+c++
+}
+
+char* numberArray[c];
+
+c=0;
+n=number;
+
+/*extract each digit*/
+/*while (n != 0) {
+numberArray[c] = n % 10;
+n /= 10;
+c++;
+}
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <signal.h>
+
+//#include "win_sdk_types.h"
+//#include "powerdaq.h"
+//#include "powerdaq32.h"
+
+//#include "ParseParams.h"
+
+int main(void) {
+
+int write = 0xffd562;
+int i;
+unsigned char array[7];
+
+sprintf(array, "%c", write);
+
+for(i=0;i<7;i++) {
+
+printf("array[%d] = %d\n", i, array[i]);
+
+}
+
+printf("\nPress enter to continue...");
+
+getchar();
+getchar();
+
+return 0;
+}
