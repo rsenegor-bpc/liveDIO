@@ -213,8 +213,7 @@ int main(int argc, char *argv[])
 
  int restartFlag=1;
 
-//  while(!restartFlag) { 
-   int i,k,j, failFlag[3] = {0,0}, initFlag=1;
+ int i,k,j, failFlag[3] = {0,0}, initFlag=1;
 
 //Default parameters
    PD_PARAMS params = {0, 4, {0,1,2,3}, 5.0, 0};
@@ -225,7 +224,7 @@ int main(int argc, char *argv[])
 
  while(1) {
 
-if((!statusStart && initFlag) | (!restartFlag && initFlag)) {            //if valid entry to start test
+if((!statusStart && initFlag) | (!restartFlag && initFlag)) {            //if valid entry to start test and no initialization OR if we've recently restarted the test with bad initialization
    
    j=-1;   
 
@@ -258,11 +257,9 @@ while(j<4 && initFlag) {      //Limit how many values of j (device number) we te
    initFlag = InitSingleDIO(&G_DioData);
 
 }
-} //!!!!!!!!!!!!!!
+}
 
-// while(1) {
-
-   if((statusStart != 0) ^ (!restartFlag)) {  //!!!!!!!!!! May be problematic if user quits originally. statusStart won't update and will display this message every time. POSSIBLE FIX: Above "continue;", update statusStart to skip this
+   if((statusStart != 0) ^ (!restartFlag)) {
            restartFlag = system ("dialog --title 'DIO Test' --yesno 'Test not run.\n\nUser quit.\n\nRestart test?' 10 25");
 	   if(!restartFlag) {continue;}
            if(restartFlag) {break;}
@@ -295,8 +292,6 @@ while(j<4 && initFlag) {      //Limit how many values of j (device number) we te
         if(restartFlag) {break;}
 }
 
- //  system ("dialog --title 'DIO Test' --msgbox 'Test complete.' 10 25");
-
    if(!initFlag && !failFlag[0] && !failFlag[1]) {
 
       restartFlag = system ("dialog --title 'DIO Test complete!' --yesno 'PASS\n\nRestart test?' 10 25");
@@ -313,6 +308,5 @@ while(j<4 && initFlag) {      //Limit how many values of j (device number) we te
      
    system("clear");
  }
-//}
    return 0;
 }
